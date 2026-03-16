@@ -19,6 +19,9 @@ import modal
 import requests
 import json
 import os
+from dotenv import load_dotenv
+
+load_dotenv()
 
 # ─────────────────────────────────────────────
 # Infrastructure
@@ -27,8 +30,8 @@ import os
 app = modal.App("maker-checker-demo")
 
 # Online API Keys
-DEEPSEEK_API_KEY = "sk-449a57b261e74a3dbccc4c0764f695db"
-KIMI_API_KEY = "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"
+DEEPSEEK_API_KEY = os.environ.get("DEEPSEEK_API_KEY")
+KIMI_API_KEY = os.environ.get("KIMI_API_KEY")
 KIMI_ENDPOINT = "https://integrate.api.nvidia.com/v1/chat/completions"
 DEEPSEEK_ENDPOINT = "https://api.deepseek.com/chat/completions"
 
