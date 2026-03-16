@@ -1,0 +1,1012 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Maker · Checker</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link
+        href="https://fonts.googleapis.com/css2?family=DM+Mono:ital,wght@0,300;0,400;0,500;1,400&family=DM+Sans:wght@300;400;500&display=swap"
+        rel="stylesheet">
+    <style>
+        /* ── Reset & base ── */
+        *,
+        *::before,
+        *::after {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        :root {
+            --bg: #0d0f12;
+            --surface: #141720;
+            --surface2: #1c2030;
+            --border: #252a3a;
+            --border2: #2e3450;
+            --text: #d4d8e8;
+            --muted: #606880;
+            --accent: #5b7fff;
+            --accent2: #8b5cf6;
+            --maker: #1e9e7e;
+            --maker-bg: #0e2620;
+            --checker: #e07b39;
+            --checker-bg: #261810;
+            --pass: #22c55e;
+            --pass-bg: #052010;
+            --fail: #ef4444;
+            --fail-bg: #1c0808;
+            --note: #eab308;
+            --note-bg: #1c1600;
+            --mono: 'DM Mono', monospace;
+            --sans: 'DM Sans', sans-serif;
+            --radius: 10px;
+            --radius-lg: 16px;
+        }
+
+        html,
+        body {
+            height: 100%;
+            background: var(--bg);
+            color: var(--text);
+            font-family: var(--sans);
+            font-size: 15px;
+            line-height: 1.6;
+        }
+
+        /* ── Layout ── */
+        .app {
+            display: grid;
+            grid-template-rows: 56px 1fr 80px;
+            height: 100vh;
+            max-width: 860px;
+            margin: 0 auto;
+            padding: 0 16px;
+        }
+
+        /* ── Header ── */
+        header {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            border-bottom: 1px solid var(--border);
+        }
+
+        .logo {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .logo-dot {
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            background: var(--accent);
+            box-shadow: 0 0 8px var(--accent);
+        }
+
+        .logo-title {
+            font-family: var(--mono);
+            font-size: 14px;
+            font-weight: 500;
+            letter-spacing: 0.08em;
+            color: var(--text);
+        }
+
+        .logo-sep {
+            color: var(--border2);
+            font-family: var(--mono);
+        }
+
+        .badge {
+            margin-left: auto;
+            display: flex;
+            gap: 8px;
+            align-items: center;
+        }
+
+        .model-select {
+            background: var(--surface2);
+            color: var(--text);
+            font-family: var(--mono);
+            font-size: 11px;
+            border: 1px solid var(--border);
+            border-radius: 4px;
+            padding: 4px 8px;
+            outline: none;
+            cursor: pointer;
+        }
+
+        .model-select:hover {
+            border-color: var(--muted);
+        }
+
+        .endpoint-input {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            margin-left: 16px;
+        }
+
+        .endpoint-input label {
+            font-family: var(--mono);
+            font-size: 11px;
+            color: var(--muted);
+            white-space: nowrap;
+        }
+
+        .endpoint-input input {
+            background: var(--surface2);
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            color: var(--text);
+            font-family: var(--mono);
+            font-size: 11px;
+            padding: 3px 8px;
+            width: 280px;
+            outline: none;
+        }
+
+        .endpoint-input input:focus {
+            border-color: var(--accent);
+        }
+
+        /* ── Toggle Switch ── */
+        .toggle-container {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            margin-left: 16px;
+        }
+
+        .toggle-label {
+            font-family: var(--mono);
+            font-size: 11px;
+            color: var(--muted);
+            cursor: pointer;
+            transition: color 0.2s;
+        }
+
+        .toggle-label.active {
+            color: var(--text);
+            font-weight: 500;
+        }
+
+        .toggle-switch {
+            position: relative;
+            width: 36px;
+            height: 20px;
+            background: var(--surface2);
+            border: 1px solid var(--border);
+            border-radius: 20px;
+            cursor: pointer;
+            transition: background 0.3s;
+        }
+
+        .toggle-switch.online {
+            background: var(--accent);
+            border-color: var(--accent);
+        }
+
+        .toggle-thumb {
+            position: absolute;
+            top: 2px;
+            left: 2px;
+            width: 14px;
+            height: 14px;
+            background: var(--text);
+            border-radius: 50%;
+            transition: transform 0.3s;
+        }
+
+        .toggle-switch.online .toggle-thumb {
+            transform: translateX(16px);
+            background: #fff;
+        }
+
+        /* ── Feed ── */
+        .feed {
+            overflow-y: auto;
+            padding: 24px 0 16px;
+            display: flex;
+            flex-direction: column;
+            gap: 32px;
+            scroll-behavior: smooth;
+        }
+
+        .feed::-webkit-scrollbar {
+            width: 4px;
+        }
+
+        .feed::-webkit-scrollbar-track {
+            background: transparent;
+        }
+
+        .feed::-webkit-scrollbar-thumb {
+            background: var(--border2);
+            border-radius: 2px;
+        }
+
+        /* ── Empty state ── */
+        .empty {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            height: 100%;
+            gap: 16px;
+            color: var(--muted);
+            text-align: center;
+        }
+
+        .empty-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 8px;
+            margin-top: 8px;
+        }
+
+        .empty-chip {
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
+            padding: 10px 14px;
+            font-size: 13px;
+            cursor: pointer;
+            transition: border-color .15s, color .15s;
+            text-align: left;
+        }
+
+        .empty-chip:hover {
+            border-color: var(--accent);
+            color: var(--text);
+        }
+
+        .empty-title {
+            font-family: var(--mono);
+            font-size: 13px;
+            letter-spacing: .06em;
+        }
+
+        /* ── Turn ── */
+        .turn {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+            animation: fadeUp .3s ease both;
+        }
+
+        @keyframes fadeUp {
+            from {
+                opacity: 0;
+                transform: translateY(8px);
+            }
+
+            to {
+                opacity: 1;
+                transform: none;
+            }
+        }
+
+        /* ── User bubble ── */
+        .user-bubble {
+            align-self: flex-end;
+            background: var(--surface2);
+            border: 1px solid var(--border2);
+            border-radius: var(--radius-lg) var(--radius-lg) 4px var(--radius-lg);
+            padding: 10px 16px;
+            max-width: 72%;
+            font-size: 14px;
+        }
+
+        /* ── Model cards ── */
+        .cards {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 12px;
+        }
+
+        @media (max-width: 600px) {
+            .cards {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        .card {
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: var(--radius-lg);
+            overflow: hidden;
+        }
+
+        .card-head {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 10px 14px;
+            border-bottom: 1px solid var(--border);
+        }
+
+        .card-head .dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            flex-shrink: 0;
+        }
+
+        .card-head .label {
+            font-family: var(--mono);
+            font-size: 11px;
+            font-weight: 500;
+            letter-spacing: .06em;
+        }
+
+        .card-head .model {
+            font-family: var(--mono);
+            font-size: 10px;
+            color: var(--muted);
+            margin-left: auto;
+        }
+
+        .card-body {
+            padding: 14px;
+            font-size: 13.5px;
+            line-height: 1.7;
+        }
+
+        .card.maker .dot {
+            background: var(--maker);
+        }
+
+        .card.maker .label {
+            color: var(--maker);
+        }
+
+        .card.maker {
+            border-color: #1a3830;
+        }
+
+        .card.checker .dot {
+            background: var(--checker);
+        }
+
+        .card.checker .label {
+            color: var(--checker);
+        }
+
+        .card.checker {
+            border-color: #30200e;
+        }
+
+        /* ── Verdict badge ── */
+        .verdict {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            font-family: var(--mono);
+            font-size: 11px;
+            font-weight: 500;
+            letter-spacing: .06em;
+            padding: 3px 10px;
+            border-radius: 4px;
+            margin-bottom: 10px;
+        }
+
+        .verdict.pass {
+            background: var(--pass-bg);
+            color: var(--pass);
+            border: 1px solid #0a4020;
+        }
+
+        .verdict.fail {
+            background: var(--fail-bg);
+            color: var(--fail);
+            border: 1px solid #3a0808;
+        }
+
+        .verdict.notes {
+            background: var(--note-bg);
+            color: var(--note);
+            border: 1px solid #2a2000;
+        }
+
+        .verdict::before {
+            content: '';
+            width: 6px;
+            height: 6px;
+            border-radius: 50%;
+            background: currentColor;
+        }
+
+        /* ── Checker sections ── */
+        .checker-section {
+            margin-top: 10px;
+        }
+
+        .checker-label {
+            font-family: var(--mono);
+            font-size: 10px;
+            letter-spacing: .08em;
+            color: var(--muted);
+            text-transform: uppercase;
+            margin-bottom: 4px;
+        }
+
+        .checker-content {
+            font-size: 13px;
+            line-height: 1.65;
+        }
+
+        .checker-content ul {
+            list-style: none;
+            display: flex;
+            flex-direction: column;
+            gap: 3px;
+        }
+
+        .checker-content li {
+            display: flex;
+            gap: 6px;
+            align-items: flex-start;
+        }
+
+        .checker-content li::before {
+            content: '–';
+            color: var(--muted);
+            flex-shrink: 0;
+            margin-top: 1px;
+        }
+
+        .improved-box {
+            background: var(--surface2);
+            border: 1px solid var(--border2);
+            border-radius: var(--radius);
+            padding: 10px 12px;
+            font-size: 13px;
+            line-height: 1.65;
+            margin-top: 4px;
+        }
+
+        /* ── Skeleton loader ── */
+        .skeleton-cards {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 12px;
+        }
+
+        @media (max-width: 600px) {
+            .skeleton-cards {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        .skeleton-card {
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: var(--radius-lg);
+            padding: 14px;
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        .skel {
+            background: var(--surface2);
+            border-radius: 4px;
+            animation: pulse 1.4s ease-in-out infinite;
+        }
+
+        .skel-head {
+            height: 12px;
+            width: 60%;
+        }
+
+        .skel-line {
+            height: 11px;
+        }
+
+        .skel-line.w80 {
+            width: 80%;
+        }
+
+        .skel-line.w65 {
+            width: 65%;
+        }
+
+        .skel-line.w90 {
+            width: 90%;
+        }
+
+        .skel-line.w50 {
+            width: 50%;
+        }
+
+        @keyframes pulse {
+
+            0%,
+            100% {
+                opacity: .4
+            }
+
+            50% {
+                opacity: .8
+            }
+        }
+
+        .status-row {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-family: var(--mono);
+            font-size: 11px;
+            color: var(--muted);
+        }
+
+        .spinner {
+            width: 12px;
+            height: 12px;
+            border: 1.5px solid var(--border2);
+            border-top-color: var(--accent);
+            border-radius: 50%;
+            animation: spin .8s linear infinite;
+        }
+
+        @keyframes spin {
+            to {
+                transform: rotate(360deg);
+            }
+        }
+
+        /* ── Input bar ── */
+        .input-bar {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 12px 0 16px;
+            border-top: 1px solid var(--border);
+        }
+
+        .input-wrap {
+            flex: 1;
+            position: relative;
+        }
+
+        .input-wrap textarea {
+            width: 100%;
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: var(--radius-lg);
+            color: var(--text);
+            font-family: var(--sans);
+            font-size: 14px;
+            padding: 12px 16px;
+            resize: none;
+            outline: none;
+            line-height: 1.5;
+            max-height: 120px;
+            overflow-y: auto;
+            transition: border-color .15s;
+        }
+
+        .input-wrap textarea::placeholder {
+            color: var(--muted);
+        }
+
+        .input-wrap textarea:focus {
+            border-color: var(--border2);
+        }
+
+        .send-btn {
+            width: 40px;
+            height: 40px;
+            border-radius: 10px;
+            background: var(--accent);
+            border: none;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-shrink: 0;
+            transition: opacity .15s, transform .1s;
+        }
+
+        .send-btn:hover {
+            opacity: .85;
+        }
+
+        .send-btn:active {
+            transform: scale(.95);
+        }
+
+        .send-btn:disabled {
+            opacity: .3;
+            cursor: not-allowed;
+        }
+
+        .send-btn svg {
+            width: 16px;
+            height: 16px;
+            fill: white;
+        }
+
+        /* ── Error ── */
+        .error-chip {
+            background: var(--fail-bg);
+            border: 1px solid #3a0808;
+            color: var(--fail);
+            font-size: 13px;
+            padding: 10px 14px;
+            border-radius: var(--radius);
+            font-family: var(--mono);
+        }
+    </style>
+</head>
+
+<body>
+    <div class="app">
+        <header>
+            <div class="logo">
+                <div class="logo-dot"></div>
+                <span class="logo-title">maker</span>
+                <span class="logo-sep">·</span>
+                <span class="logo-title">checker</span>
+            </div>
+            <div class="endpoint-input">
+                <label>endpoint</label>
+                <input type="text" id="endpointInput" placeholder="https://your-name--maker-checker.modal.run" />
+            </div>
+
+            <div class="toggle-container">
+                <span class="toggle-label active" id="labelOnPrem" onclick="setMode('onprem')">On-Prem</span>
+                <div class="toggle-switch" id="modeToggle" onclick="toggleMode()">
+                    <div class="toggle-thumb"></div>
+                </div>
+                <span class="toggle-label" id="labelOnline" onclick="setMode('online')">Online</span>
+            </div>
+
+            <div class="badge">
+                <select id="makerSelect" class="model-select"></select>
+                <span class="logo-sep">·</span>
+                <select id="checkerSelect" class="model-select"></select>
+            </div>
+        </header>
+
+        <div class="feed" id="feed">
+            <div class="empty" id="emptyState">
+                <div class="empty-title">// ask anything</div>
+                <div style="font-size:13px;color:var(--muted);margin-top:-4px">OLMo-2 drafts · Qwen3 critiques</div>
+                <div class="empty-grid">
+                    <div class="empty-chip" onclick="usePrompt(this)">What caused the fall of the Roman Empire?</div>
+                    <div class="empty-chip" onclick="usePrompt(this)">Explain backpropagation in two sentences</div>
+                    <div class="empty-chip" onclick="usePrompt(this)">What is the capital of Australia and why isn't it
+                        Sydney?</div>
+                    <div class="empty-chip" onclick="usePrompt(this)">Is Pluto a planet? Give the current scientific
+                        consensus</div>
+                </div>
+            </div>
+        </div>
+
+        <div class="input-bar">
+            <div class="input-wrap">
+                <textarea id="promptInput" rows="1" placeholder="Ask something..." onkeydown="handleKey(event)"
+                    oninput="autoResize(this)"></textarea>
+            </div>
+            <button class="send-btn" id="sendBtn" onclick="sendPrompt()" title="Send">
+                <svg viewBox="0 0 24 24">
+                    <path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z" />
+                </svg>
+            </button>
+        </div>
+    </div>
+
+    <script>
+        const feed = document.getElementById('feed');
+        const emptyState = document.getElementById('emptyState');
+        const input = document.getElementById('promptInput');
+        const sendBtn = document.getElementById('sendBtn');
+        const epInput = document.getElementById('endpointInput');
+        const makerSelect = document.getElementById('makerSelect');
+        const checkerSelect = document.getElementById('checkerSelect');
+        const modeToggle = document.getElementById('modeToggle');
+        const labelOnPrem = document.getElementById('labelOnPrem');
+        const labelOnline = document.getElementById('labelOnline');
+
+        // Configs for mode toggle
+        let isOnlineMode = false;
+
+        const onPremMakers = [
+            { val: "allenai/OLMo-2-1124-7B-Instruct", text: "OLMo-2 7B" },
+            { val: "meta-llama/Llama-3.2-3B-Instruct", text: "Llama 3.2 3B" },
+            { val: "Qwen/Qwen2.5-7B-Instruct", text: "Qwen 2.5 7B" }
+        ];
+
+        const onPremCheckers = [
+            { val: "Qwen/Qwen3-4B", text: "Qwen 3 4B" },
+            { val: "HuggingFaceTB/SmolLM2-1.7B-Instruct", text: "SmolLM2 1.7B" },
+            { val: "meta-llama/Llama-3.2-1B-Instruct", text: "Llama 3.2 1B" }
+        ];
+
+        const onlineMakers = [
+            { val: "online/deepseek-chat", text: "DeepSeek Chat" },
+            { val: "online/kimi-k2.5", text: "Moonshot Kimi" }
+        ];
+
+        const onlineCheckers = [
+            { val: "online/deepseek-chat", text: "DeepSeek Chat" },
+            { val: "online/kimi-k2.5", text: "Moonshot Kimi" }
+        ];
+
+        function populateSelect(selectElem, options) {
+            selectElem.innerHTML = '';
+            options.forEach(opt => {
+                const el = document.createElement('option');
+                el.value = opt.val;
+                el.textContent = opt.text;
+                selectElem.appendChild(el);
+            });
+        }
+
+        function updateModelOptions() {
+            if (isOnlineMode) {
+                populateSelect(makerSelect, onlineMakers);
+                populateSelect(checkerSelect, onlineCheckers);
+            } else {
+                populateSelect(makerSelect, onPremMakers);
+                populateSelect(checkerSelect, onPremCheckers);
+            }
+        }
+
+        function toggleMode() {
+            setMode(isOnlineMode ? 'onprem' : 'online');
+        }
+
+        function setMode(mode) {
+            isOnlineMode = mode === 'online';
+            if (isOnlineMode) {
+                modeToggle.classList.add('online');
+                labelOnline.classList.add('active');
+                labelOnPrem.classList.remove('active');
+            } else {
+                modeToggle.classList.remove('online');
+                labelOnPrem.classList.add('active');
+                labelOnline.classList.remove('active');
+            }
+            updateModelOptions();
+        }
+
+        // Initialize default UI state
+        updateModelOptions();
+
+        // Persist endpoint
+        const saved = localStorage.getItem('mc_endpoint');
+        if (saved) epInput.value = saved;
+        epInput.addEventListener('input', () => localStorage.setItem('mc_endpoint', epInput.value.trim()));
+
+        function usePrompt(el) {
+            input.value = el.textContent;
+            autoResize(input);
+            input.focus();
+        }
+
+        function autoResize(el) {
+            el.style.height = 'auto';
+            el.style.height = Math.min(el.scrollHeight, 120) + 'px';
+        }
+
+        function handleKey(e) {
+            if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendPrompt(); }
+        }
+
+        function getEndpoint() {
+            const raw = epInput.value.trim();
+            return raw || null;
+        }
+
+        function appendUserBubble(text) {
+            const el = document.createElement('div');
+            el.className = 'turn';
+            el.innerHTML = `<div class="user-bubble">${escHtml(text)}</div>`;
+            feed.appendChild(el);
+            return el;
+        }
+
+        function appendSkeleton() {
+            const makerName = makerSelect.options[makerSelect.selectedIndex].text;
+            const el = document.createElement('div');
+            el.className = 'turn';
+            el.innerHTML = `
+    <div class="status-row"><div class="spinner"></div><span>${makerName} drafting…</span></div>
+    <div class="skeleton-cards">
+      <div class="skeleton-card">
+        <div class="skel skel-head"></div>
+        <div class="skel skel-line w90"></div>
+        <div class="skel skel-line w80"></div>
+        <div class="skel skel-line w65"></div>
+        <div class="skel skel-line w80"></div>
+      </div>
+      <div class="skeleton-card">
+        <div class="skel skel-head"></div>
+        <div class="skel skel-line w80"></div>
+        <div class="skel skel-line w50"></div>
+        <div class="skel skel-line w90"></div>
+        <div class="skel skel-line w65"></div>
+      </div>
+    </div>`;
+            feed.appendChild(el);
+            feed.scrollTop = feed.scrollHeight;
+            return el;
+        }
+
+        function verdictClass(v) {
+            if (!v) return 'pass';
+            const u = v.toUpperCase();
+            if (u.includes('FAIL')) return 'fail';
+            if (u.includes('NOTE')) return 'notes';
+            return 'pass';
+        }
+
+        function renderBullets(text) {
+            if (!text || text.toLowerCase() === 'none' || text.toLowerCase() === 'n/a') return '<span style="color:var(--muted)">—</span>';
+            return '<ul>' + text.split('\n').filter(l => l.trim()).map(l => `<li>${escHtml(l.replace(/^[-•*]\s*/, ''))}</li>`).join('') + '</ul>';
+        }
+
+        function renderResult(turn, data) {
+            const { maker, checker, makerModelId, checkerModelId } = data;
+            const vc = verdictClass(checker.verdict);
+
+            // Make the names look pretty based on value (fallback to id if custom)
+            const getModelName = (selectElem, id) => {
+                const opt = Array.from(selectElem.options).find(o => o.value === id);
+                return opt ? opt.text : id.split('/').pop();
+            };
+            const makerName = getModelName(makerSelect, makerModelId);
+            const checkerName = getModelName(checkerSelect, checkerModelId);
+
+            const improved = checker.improved && checker.improved.toLowerCase() !== 'n/a'
+                ? `<div class="checker-section"><div class="checker-label">improved response</div><div class="improved-box">${escHtml(checker.improved)}</div></div>`
+                : '';
+
+            turn.innerHTML = `
+    <div class="cards">
+      <div class="card maker">
+        <div class="card-head">
+          <div class="dot"></div>
+          <span class="label">MAKER</span>
+          <span class="model">${makerName}</span>
+        </div>
+        <div class="card-body">${escHtml(maker)}</div>
+      </div>
+      <div class="card checker">
+        <div class="card-head">
+          <div class="dot"></div>
+          <span class="label">CHECKER</span>
+          <span class="model">${checkerName}</span>
+        </div>
+        <div class="card-body">
+          <div class="verdict ${vc}">${checker.verdict || 'PASS'}</div>
+          <div class="checker-section">
+            <div class="checker-label">issues</div>
+            <div class="checker-content">${renderBullets(checker.issues)}</div>
+          </div>
+          <div class="checker-section">
+            <div class="checker-label">strengths</div>
+            <div class="checker-content">${renderBullets(checker.strengths)}</div>
+          </div>
+          ${improved}
+        </div>
+      </div>
+    </div>`;
+            turn.style.animation = 'fadeUp .3s ease both';
+            feed.scrollTop = feed.scrollHeight;
+        }
+
+        function renderMaker(turn, makerText, makerModelId, checkerModelId) {
+            const getModelName = (selectElem, id) => {
+                const opt = Array.from(selectElem.options).find(o => o.value === id);
+                return opt ? opt.text : id.split('/').pop();
+            };
+            const makerName = getModelName(makerSelect, makerModelId);
+            const checkerName = getModelName(checkerSelect, checkerModelId || checkerSelect.value);
+
+            turn.innerHTML = `
+    <div class="cards">
+      <div class="card maker">
+        <div class="card-head">
+          <div class="dot"></div>
+          <span class="label">MAKER</span>
+          <span class="model">${makerName}</span>
+        </div>
+        <div class="card-body">${escHtml(makerText)}</div>
+      </div>
+      <div class="card checker">
+        <div class="card-head">
+          <div class="dot"></div>
+          <span class="label">CHECKER</span>
+          <span class="model">${checkerName}</span>
+        </div>
+        <div class="card-body" style="padding: 24px;">
+            <div class="status-row"><div class="spinner"></div><span>${checkerName} reviewing…</span></div>
+        </div>
+      </div>
+    </div>`;
+            feed.scrollTop = feed.scrollHeight;
+        }
+
+        async function sendPrompt() {
+            const prompt = input.value.trim();
+            if (!prompt) return;
+            const endpoint = getEndpoint();
+            if (!endpoint) { alert('Paste your Modal endpoint URL in the header first.'); return; }
+
+            const makerModel = makerSelect.value;
+            const checkerModel = checkerSelect.value;
+
+            emptyState.remove();
+            input.value = '';
+            autoResize(input);
+            sendBtn.disabled = true;
+
+            appendUserBubble(prompt);
+            const skeleton = appendSkeleton();
+
+            try {
+                const res = await fetch(endpoint, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ prompt, maker: makerModel, checker: checkerModel }),
+                });
+                if (!res.ok) throw new Error(`HTTP ${res.status}`);
+
+                const reader = res.body.getReader();
+                const decoder = new TextDecoder();
+                let buffer = '';
+                let currentMaker = '';
+                let receivedMakerModelId = makerModel;
+                let receivedCheckerModelId = checkerModel;
+
+                while (true) {
+                    const { done, value } = await reader.read();
+                    if (done) break;
+                    buffer += decoder.decode(value, { stream: true });
+                    const lines = buffer.split('\n');
+                    buffer = lines.pop(); // keep last incomplete chunk
+
+                    for (const line of lines) {
+                        if (!line.trim() || !line.startsWith('data: ')) continue;
+                        let data;
+                        try { data = JSON.parse(line.substring(6)); } catch (e) { continue; }
+
+                        if (data.error) throw new Error(data.error);
+
+                        if (data.step === 'maker') {
+                            currentMaker = data.draft;
+                            receivedMakerModelId = data.model || makerModel;
+                            renderMaker(skeleton, currentMaker, receivedMakerModelId, receivedCheckerModelId);
+                        } else if (data.step === 'checker') {
+                            receivedCheckerModelId = data.model || checkerModel;
+                            renderResult(skeleton, {
+                                maker: currentMaker,
+                                checker: data.review,
+                                makerModelId: receivedMakerModelId,
+                                checkerModelId: receivedCheckerModelId
+                            });
+                        }
+                    }
+                }
+            } catch (err) {
+                skeleton.innerHTML = `<div class="error-chip">// error: ${escHtml(err.message)}</div>`;
+            } finally {
+                sendBtn.disabled = false;
+                input.focus();
+            }
+        }
+
+        function escHtml(s) {
+            return String(s ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+        }
+    </script>
+</body>
+
+</html>
