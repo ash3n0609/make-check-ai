@@ -19,6 +19,8 @@ import modal
 import requests
 import json
 import os
+import time
+import threading
 from dotenv import load_dotenv
 
 load_dotenv()
@@ -29,11 +31,10 @@ load_dotenv()
 
 app = modal.App("maker-checker-demo")
 
-# Online API Keys
-DEEPSEEK_API_KEY = os.environ.get("DEEPSEEK_API_KEY")
-KIMI_API_KEY = os.environ.get("KIMI_API_KEY")
+# Online API Endpoints
 KIMI_ENDPOINT = "https://integrate.api.nvidia.com/v1/chat/completions"
 DEEPSEEK_ENDPOINT = "https://api.deepseek.com/chat/completions"
+GEMINI_ENDPOINT = "https://generativelanguage.googleapis.com/v1beta/openai/chat/completions"
 
 hf_cache_vol = modal.Volume.from_name("huggingface-cache", create_if_missing=True)
 
@@ -90,38 +91,68 @@ revised answer, or "N/A" if PASS
 # Maker class — model loaded once, reused across all calls
 # ═══════════════════════════════════════════════════════════
 
+SCALEDOWN_SECONDS = 240  # 4 minutes warm window
+
+
+def _start_idle_countdown(label: str, warm_seconds: int, get_last_active):
+    """Daemon thread: prints idle countdown every 30 s to the container log."""
+    def _run():
+        while True:
+            time.sleep(30)
+            idle = time.time() - get_last_active()
+            remaining = max(0, warm_seconds - idle)
+            if remaining > 0:
+                print(f"[{label}] idle {idle:.0f}s — shutting down in {remaining:.0f}s if no requests")
+            else:
+                print(f"[{label}] idle {idle:.0f}s — container scaling down now")
+    t = threading.Thread(target=_run, daemon=True)
+    t.start()
+
+
 @app.cls(
     gpu="A100", # Use A100 instead of H100 to increase availability, H100 quota often hit
     image=image,
     volumes={VOLUME_PATH: hf_cache_vol},
     timeout=600,
-    scaledown_window=60,   # stay warm for 1 min after last request
+    scaledown_window=SCALEDOWN_SECONDS,
 )
 class Maker:
-    model_id: str = modal.parameter(default=MAKER_MODEL_ID)
+    # ⚠️  Do NOT use modal.parameter here.
+    # Parameterised classes get a unique container key per value — meaning
+    # Maker(model_id="X") and Maker() are routed to DIFFERENT containers and
+    # each cold-starts (reloads weights) independently.
+    # Hard-coding the model ID gives Modal a single stable container identity
+    # that stays warm between requests.
 
     @modal.enter()
     def load(self):
-        """Called ONCE when container starts. Model stays in VRAM."""
+        """Called ONCE when the container starts. Weights stay in VRAM."""
         from transformers import pipeline
-        print(f"[Maker] Loading {self.model_id} into GPU memory...")
+        print(f"[Maker] Loading {MAKER_MODEL_ID} into GPU memory...")
         self.pipe = pipeline(
             "text-generation",
-            model=self.model_id,
+            model=MAKER_MODEL_ID,
             device_map="cuda",
             model_kwargs={"dtype": "auto"},
         )
-        print("[Maker] Ready.")
+        self._last_active = time.time()
+        _start_idle_countdown("Maker", SCALEDOWN_SECONDS, lambda: self._last_active)
+        print(f"[Maker] Ready. Will stay warm for {SCALEDOWN_SECONDS}s after last request.")
 
     @modal.method()
-    def generate(self, prompt: str) -> str:
-        messages = [{"role": "user", "content": prompt}]
+    def generate(self, messages: list) -> str:
+        """
+        Accept the full conversation history so the model has context
+        from previous turns.  Each element is {"role": ..., "content": ...}.
+        """
+        self._last_active = time.time()  # reset idle clock
         result = self.pipe(
             messages,
             max_new_tokens=512,
             do_sample=True,
             temperature=0.7,
         )
+        self._last_active = time.time()  # reset again after inference
         draft = result[0]["generated_text"][-1]["content"]
         print(f"[Maker] Draft ({len(draft)} chars):\n{draft}\n")
         return draft
@@ -136,26 +167,30 @@ class Maker:
     image=image,
     volumes={VOLUME_PATH: hf_cache_vol},
     timeout=600,
-    scaledown_window=60,
+    scaledown_window=SCALEDOWN_SECONDS,
 )
 class Checker:
-    model_id: str = modal.parameter(default=CHECKER_MODEL_ID)
+    # Same reasoning as Maker — no modal.parameter so the container
+    # identity is stable and the warm container is always reused.
 
     @modal.enter()
     def load(self):
-        """Called ONCE when container starts. Model stays in VRAM."""
+        """Called ONCE when the container starts. Weights stay in VRAM."""
         from transformers import pipeline
-        print(f"[Checker] Loading {self.model_id} into GPU memory...")
+        print(f"[Checker] Loading {CHECKER_MODEL_ID} into GPU memory...")
         self.pipe = pipeline(
             "text-generation",
-            model=self.model_id,
+            model=CHECKER_MODEL_ID,
             device_map="cuda",
             model_kwargs={"dtype": "auto"},
         )
-        print("[Checker] Ready.")
+        self._last_active = time.time()
+        _start_idle_countdown("Checker", SCALEDOWN_SECONDS, lambda: self._last_active)
+        print(f"[Checker] Ready. Will stay warm for {SCALEDOWN_SECONDS}s after last request.")
 
     @modal.method()
     def review(self, original_prompt: str, draft: str) -> str:
+        self._last_active = time.time()  # reset idle clock
         user_message = (
             f"ORIGINAL PROMPT:\n{original_prompt}\n\n"
             f"DRAFT RESPONSE:\n{draft}"
@@ -165,6 +200,7 @@ class Checker:
             {"role": "user",   "content": user_message},
         ]
         result = self.pipe(messages, max_new_tokens=768, do_sample=False)
+        self._last_active = time.time()  # reset again after inference
         review = result[0]["generated_text"][-1]["content"]
         print(f"[Checker] Review:\n{review}\n")
         return review
@@ -205,12 +241,16 @@ def call_online_model(model_id: str, messages: list) -> str:
     """
     if model_id.startswith("online/deepseek"):
         url = DEEPSEEK_ENDPOINT
-        api_key = DEEPSEEK_API_KEY
+        api_key = os.environ.get("DEEPSEEK_API_KEY")
         actual_model = model_id.split("/")[-1] # e.g. "deepseek-chat"
     elif model_id.startswith("online/kimi"):
         url = KIMI_ENDPOINT
-        api_key = KIMI_API_KEY
+        api_key = os.environ.get("KIMI_API_KEY")
         actual_model = "moonshotai/kimi-k2.5"
+    elif model_id.startswith("online/gemini"):
+        url = GEMINI_ENDPOINT
+        api_key = os.environ.get("GEMINI_API_KEY")
+        actual_model = model_id.split("/")[-1] # e.g. "gemini-3.1-flash-image-preview"
     else:
         raise ValueError(f"Unknown online model: {model_id}")
 
@@ -237,17 +277,19 @@ def call_online_model(model_id: str, messages: list) -> str:
 # Orchestrator
 # ═══════════════════════════════════════════════════════════
 
-@app.function(image=image, timeout=1200)
+@app.function(image=image, secrets=[modal.Secret.from_dotenv()], timeout=1200)
 async def run_pipeline(prompt: str, maker_model_id: str = MAKER_MODEL_ID, checker_model_id: str = CHECKER_MODEL_ID) -> dict:
-    """Call Maker then Checker via their warm class instances."""
+    """Call Maker then Checker via their warm class instances (CLI helper)."""
     print("=" * 60)
     print(f"Prompt: {prompt}")
     print("=" * 60)
 
-    maker   = Maker(model_id=maker_model_id)
-    checker = Checker(model_id=checker_model_id)
+    maker   = Maker()
+    checker = Checker()
 
-    draft  = await maker.generate.remote.aio(prompt)
+    # Single-turn: wrap prompt as a one-message history
+    messages = [{"role": "user", "content": prompt}]
+    draft  = await maker.generate.remote.aio(messages)
     review = await checker.review.remote.aio(prompt, draft)
 
     print(f"\n[Maker  - {maker_model_id}]\n{draft}\n")
@@ -281,51 +323,66 @@ fastapi_app.add_middleware(
 def fastapi_wrapper():
     return fastapi_app
 
-@app.function(image=image, timeout=1200)
+@app.function(image=image, secrets=[modal.Secret.from_dotenv()], timeout=1200)
 @modal.fastapi_endpoint(method="POST", label="maker-checker")
 async def web_check(body: dict):
     """
     POST /maker-checker
-    Body:    {"prompt": "...", "maker": "...", "checker": "..."}
+    Body:    {"messages": [{"role":"user","content":"..."},...], "maker": "...", "checker": "..."}
+             OR legacy: {"prompt": "...", "maker": "...", "checker": "..."}
     Returns: NDJSON stream
+
+    The `messages` list is the full conversation history (user + assistant turns).
+    The Maker receives the entire history so it can answer in context.
+    The Checker is always single-turn — it only sees the current prompt + draft.
     """
-    prompt = body.get("prompt", "").strip()
-    if not prompt:
-        return {"error": "Field 'prompt' is required."}
+    # Accept either the full messages list or a bare prompt string (backwards compat)
+    messages: list = body.get("messages")
+    if not messages:
+        prompt = body.get("prompt", "").strip()
+        if not prompt:
+            return {"error": "Provide 'messages' (list) or 'prompt' (string)."}
+        messages = [{"role": "user", "content": prompt}]
+    else:
+        # Derive the current prompt from the last user message for the Checker
+        prompt = next(
+            (m["content"] for m in reversed(messages) if m.get("role") == "user"),
+            ""
+        )
 
     maker_model_id = body.get("maker") or MAKER_MODEL_ID
     checker_model_id = body.get("checker") or CHECKER_MODEL_ID
 
     async def generate():
-        # Yield an initial comment to flush reverse-proxy buffers if any exist
+        # Yield an initial comment to flush reverse-proxy buffers
         yield f": {' ' * 2048}\n\n"
 
-        # --- MAKER LOGIC ---
+        # ── MAKER ──────────────────────────────────────────────────
+        # Pass the full conversation history so the model can answer in context.
         if maker_model_id.startswith("online/"):
-            # Call synchronous requests method in a separate thread if needed, but Modal async runtime can just await it or run blocking for simplicity here.
-            # We'll run blocking for simplicity since this runs inside a Modal container anyway.
-            draft = call_online_model(maker_model_id, [{"role": "user", "content": prompt}])
+            draft = call_online_model(maker_model_id, messages)
         else:
-            maker = Maker(model_id=maker_model_id)
-            draft = await maker.generate.remote.aio(prompt)
-            
+            maker = Maker()
+            draft = await maker.generate.remote.aio(messages)
+
         yield f"data: {json.dumps({'step': 'maker', 'draft': draft, 'model': maker_model_id})}\n\n"
 
-        # --- CHECKER LOGIC ---
+        # ── CHECKER ────────────────────────────────────────────────
+        # The Checker is always single-turn: it only reviews the current draft.
+        checker_user_msg = (
+            f"ORIGINAL PROMPT:\n{prompt}\n\n"
+            f"DRAFT RESPONSE:\n{draft}"
+        )
+        checker_messages = [
+            {"role": "system", "content": CHECKER_SYSTEM},
+            {"role": "user",   "content": checker_user_msg},
+        ]
         if checker_model_id.startswith("online/"):
-            user_message = (
-                f"ORIGINAL PROMPT:\n{prompt}\n\n"
-                f"DRAFT RESPONSE:\n{draft}"
-            )
-            messages = [
-                {"role": "system", "content": CHECKER_SYSTEM},
-                {"role": "user",   "content": user_message},
-            ]
-            review = call_online_model(checker_model_id, messages)
+            review = call_online_model(checker_model_id, checker_messages)
         else:
-            checker = Checker(model_id=checker_model_id)
+            checker = Checker()
             review = await checker.review.remote.aio(prompt, draft)
-            
+
         parsed = parse_checker_output(review)
         yield f"data: {json.dumps({'step': 'checker', 'review': parsed, 'model': checker_model_id})}\n\n"
 
