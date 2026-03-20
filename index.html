@@ -63,19 +63,22 @@
         /* ── Layout ── */
         .app {
             display: grid;
-            grid-template-rows: 56px 1fr 80px;
+            grid-template-rows: 56px 1fr auto;
             height: 100vh;
             max-width: 860px;
             margin: 0 auto;
             padding: 0 16px;
+            position: relative; /* anchor for settings drawer */
         }
 
         /* ── Header ── */
         header {
             display: flex;
             align-items: center;
-            gap: 12px;
+            gap: 10px;
             border-bottom: 1px solid var(--border);
+            position: relative;
+            z-index: 10;
         }
 
         .new-chat-btn {
@@ -101,12 +104,12 @@
             font-family: var(--mono);
             font-size: 10px;
             color: var(--muted);
-            margin-left: 4px;
             padding: 2px 6px;
             background: var(--surface2);
             border: 1px solid var(--border);
             border-radius: 4px;
             transition: color .2s;
+            white-space: nowrap;
         }
         .context-counter.active {
             color: var(--accent);
@@ -140,8 +143,35 @@
             font-family: var(--mono);
         }
 
-        .badge {
+        /* ── Settings gear button (mobile only by default, hidden on desktop) ── */
+        .settings-btn {
+            display: none;
             margin-left: auto;
+            background: none;
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            color: var(--muted);
+            font-size: 15px;
+            width: 32px;
+            height: 32px;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            transition: border-color .15s, color .15s;
+            flex-shrink: 0;
+        }
+        .settings-btn:hover { border-color: var(--accent); color: var(--text); }
+        .settings-btn.open { border-color: var(--accent); color: var(--accent); }
+
+        /* ── Inline header controls (desktop) ── */
+        .header-controls {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-left: auto;
+        }
+
+        .badge {
             display: flex;
             gap: 8px;
             align-items: center;
@@ -158,25 +188,19 @@
             outline: none;
             cursor: pointer;
         }
-
-        .model-select:hover {
-            border-color: var(--muted);
-        }
+        .model-select:hover { border-color: var(--muted); }
 
         .endpoint-input {
             display: flex;
             align-items: center;
             gap: 6px;
-            margin-left: 16px;
         }
-
         .endpoint-input label {
             font-family: var(--mono);
             font-size: 11px;
             color: var(--muted);
             white-space: nowrap;
         }
-
         .endpoint-input input {
             background: var(--surface2);
             border: 1px solid var(--border);
@@ -185,20 +209,74 @@
             font-family: var(--mono);
             font-size: 11px;
             padding: 3px 8px;
-            width: 280px;
+            width: 240px;
             outline: none;
         }
+        .endpoint-input input:focus { border-color: var(--accent); }
 
-        .endpoint-input input:focus {
-            border-color: var(--accent);
+        /* ── Settings Drawer ── */
+        .settings-drawer {
+            display: none; /* JS toggles visibility */
+            position: absolute;
+            top: 56px;
+            left: 0;
+            right: 0;
+            background: var(--surface);
+            border-bottom: 1px solid var(--border);
+            padding: 14px 16px;
+            z-index: 100;
+            flex-direction: column;
+            gap: 12px;
+            animation: drawerFade .18s ease both;
         }
+        .settings-drawer.open { display: flex; }
+
+        @keyframes drawerFade {
+            from { opacity: 0; transform: translateY(-6px); }
+            to   { opacity: 1; transform: none; }
+        }
+
+        .drawer-row {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            flex-wrap: wrap;
+        }
+
+        .drawer-endpoint input {
+            background: var(--surface2);
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            color: var(--text);
+            font-family: var(--mono);
+            font-size: 12px;
+            padding: 6px 10px;
+            width: 100%;
+            outline: none;
+            box-sizing: border-box;
+        }
+        .drawer-endpoint input:focus { border-color: var(--accent); }
+        .drawer-endpoint label {
+            font-family: var(--mono);
+            font-size: 11px;
+            color: var(--muted);
+            margin-bottom: 4px;
+            display: block;
+        }
+
+        /* Drawer model selects go full-width on very small screens */
+        .drawer-models {
+            display: flex;
+            gap: 8px;
+            flex-wrap: wrap;
+        }
+        .drawer-models .model-select { flex: 1; min-width: 120px; }
 
         /* ── Toggle Switch ── */
         .toggle-container {
             display: flex;
             align-items: center;
             gap: 8px;
-            margin-left: 16px;
         }
 
         .toggle-label {
@@ -208,7 +286,6 @@
             cursor: pointer;
             transition: color 0.2s;
         }
-
         .toggle-label.active {
             color: var(--text);
             font-weight: 500;
@@ -224,12 +301,10 @@
             cursor: pointer;
             transition: background 0.3s;
         }
-
         .toggle-switch.online {
             background: var(--accent);
             border-color: var(--accent);
         }
-
         .toggle-thumb {
             position: absolute;
             top: 2px;
@@ -240,10 +315,20 @@
             border-radius: 50%;
             transition: transform 0.3s;
         }
-
         .toggle-switch.online .toggle-thumb {
             transform: translateX(16px);
             background: #fff;
+        }
+
+        /* ── Responsive breakpoints ── */
+        @media (max-width: 700px) {
+            /* Show gear, hide inline controls */
+            .settings-btn { display: flex; }
+            .header-controls { display: none; }
+        }
+
+        @media (max-width: 700px) {
+            .app { padding: 0 12px; }
         }
 
         /* ── Feed ── */
@@ -286,6 +371,11 @@
             grid-template-columns: 1fr 1fr;
             gap: 8px;
             margin-top: 8px;
+            width: 100%;
+            max-width: 480px;
+        }
+        @media (max-width: 440px) {
+            .empty-grid { grid-template-columns: 1fr; }
         }
 
         .empty-chip {
@@ -339,6 +429,9 @@
             padding: 10px 16px;
             max-width: 72%;
             font-size: 14px;
+        }
+        @media (max-width: 700px) {
+            .user-bubble { max-width: 90%; }
         }
 
         /* ── Model cards ── */
@@ -604,7 +697,8 @@
             display: flex;
             align-items: center;
             gap: 10px;
-            padding: 12px 0 16px;
+            padding: 12px 0;
+            padding-bottom: max(16px, env(safe-area-inset-bottom, 16px));
             border-top: 1px solid var(--border);
         }
 
@@ -798,31 +892,57 @@
                 <span class="logo-sep">·</span>
                 <span class="logo-title">checker</span>
             </div>
-            <!-- New Chat button + context turn counter -->
-            <button class="new-chat-btn" id="newChatBtn" onclick="newChat()" title="Clear conversation history">
-                ✦ new chat
-            </button>
+
+            <!-- New Chat + context (always visible) -->
+            <button class="new-chat-btn" id="newChatBtn" onclick="newChat()" title="Clear conversation history">✦ new chat</button>
             <span class="context-counter" id="ctxCounter" title="Messages in context">0 turns</span>
 
-            <div class="endpoint-input">
-                <label>endpoint</label>
-                <input type="text" id="endpointInput" placeholder="https://your-name--maker-checker.modal.run" />
-            </div>
-
-            <div class="toggle-container">
-                <span class="toggle-label active" id="labelOnPrem" onclick="setMode('onprem')">On-Prem</span>
-                <div class="toggle-switch" id="modeToggle" onclick="toggleMode()">
-                    <div class="toggle-thumb"></div>
+            <!-- Desktop inline controls -->
+            <div class="header-controls">
+                <div class="endpoint-input">
+                    <label>endpoint</label>
+                    <input type="text" id="endpointInput" placeholder="https://your-name--maker-checker.modal.run" />
                 </div>
-                <span class="toggle-label" id="labelOnline" onclick="setMode('online')">Online</span>
+                <div class="toggle-container">
+                    <span class="toggle-label active" id="labelOnPrem" onclick="setMode('onprem')">On-Prem</span>
+                    <div class="toggle-switch" id="modeToggle" onclick="toggleMode()">
+                        <div class="toggle-thumb"></div>
+                    </div>
+                    <span class="toggle-label" id="labelOnline" onclick="setMode('online')">Online</span>
+                </div>
+                <div class="badge">
+                    <select id="makerSelect" class="model-select"></select>
+                    <span class="logo-sep">·</span>
+                    <select id="checkerSelect" class="model-select"></select>
+                </div>
             </div>
 
-            <div class="badge">
-                <select id="makerSelect" class="model-select"></select>
-                <span class="logo-sep">·</span>
-                <select id="checkerSelect" class="model-select"></select>
-            </div>
+            <!-- Mobile gear button -->
+            <button class="settings-btn" id="settingsBtn" title="Settings">⚙</button>
         </header>
+
+        <!-- Mobile settings drawer (hidden by default, shown on small screens) -->
+        <div class="settings-drawer" id="settingsDrawer">
+            <!-- Endpoint -->
+            <div class="drawer-endpoint">
+                <label>endpoint</label>
+                <input type="text" id="endpointInputMobile" placeholder="https://your-name--maker-checker.modal.run" />
+            </div>
+            <!-- Mode toggle + model selects -->
+            <div class="drawer-row">
+                <div class="toggle-container">
+                    <span class="toggle-label active" id="labelOnPremMobile" onclick="setMode('onprem')">On-Prem</span>
+                    <div class="toggle-switch" id="modeToggleMobile" onclick="toggleMode()">
+                        <div class="toggle-thumb"></div>
+                    </div>
+                    <span class="toggle-label" id="labelOnlineMobile" onclick="setMode('online')">Online</span>
+                </div>
+            </div>
+            <div class="drawer-models">
+                <select id="makerSelectMobile" class="model-select"></select>
+                <select id="checkerSelectMobile" class="model-select"></select>
+            </div>
+        </div>
 
         <div class="feed" id="feed">
             <div class="empty" id="emptyState">
@@ -857,13 +977,55 @@
         let emptyState = document.getElementById('emptyState');
         const input = document.getElementById('promptInput');
         const sendBtn = document.getElementById('sendBtn');
-        const epInput = document.getElementById('endpointInput');
-        const makerSelect = document.getElementById('makerSelect');
-        const checkerSelect = document.getElementById('checkerSelect');
-        const modeToggle = document.getElementById('modeToggle');
-        const labelOnPrem = document.getElementById('labelOnPrem');
-        const labelOnline = document.getElementById('labelOnline');
         const ctxCounter = document.getElementById('ctxCounter');
+
+        // Desktop controls
+        const epInput        = document.getElementById('endpointInput');
+        const makerSelect    = document.getElementById('makerSelect');
+        const checkerSelect  = document.getElementById('checkerSelect');
+        const modeToggle     = document.getElementById('modeToggle');
+        const labelOnPrem    = document.getElementById('labelOnPrem');
+        const labelOnline    = document.getElementById('labelOnline');
+
+        // Mobile drawer controls
+        const settingsBtn         = document.getElementById('settingsBtn');
+        const settingsDrawer      = document.getElementById('settingsDrawer');
+        const epInputMobile       = document.getElementById('endpointInputMobile');
+        const makerSelectMobile   = document.getElementById('makerSelectMobile');
+        const checkerSelectMobile = document.getElementById('checkerSelectMobile');
+        const modeToggleMobile    = document.getElementById('modeToggleMobile');
+        const labelOnPremMobile   = document.getElementById('labelOnPremMobile');
+        const labelOnlineMobile   = document.getElementById('labelOnlineMobile');
+
+        // ── Settings drawer toggle ──────────────────────────────────────
+        settingsBtn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            const open = settingsDrawer.classList.toggle('open');
+            settingsBtn.classList.toggle('open', open);
+        });
+        // Close drawer when tapping outside
+        document.addEventListener('click', (e) => {
+            if (!settingsDrawer.contains(e.target) && e.target !== settingsBtn) {
+                settingsDrawer.classList.remove('open');
+                settingsBtn.classList.remove('open');
+            }
+        });
+
+        // ── Endpoint sync (desktop ↔ mobile) ───────────────────────────
+        epInput.addEventListener('input', () => {
+            epInputMobile.value = epInput.value;
+            localStorage.setItem('mc_endpoint', epInput.value.trim());
+        });
+        epInputMobile.addEventListener('input', () => {
+            epInput.value = epInputMobile.value;
+            localStorage.setItem('mc_endpoint', epInputMobile.value.trim());
+        });
+
+        // ── Model select sync ───────────────────────────────────────────
+        makerSelect.addEventListener('change', () => { makerSelectMobile.value = makerSelect.value; });
+        checkerSelect.addEventListener('change', () => { checkerSelectMobile.value = checkerSelect.value; });
+        makerSelectMobile.addEventListener('change', () => { makerSelect.value = makerSelectMobile.value; });
+        checkerSelectMobile.addEventListener('change', () => { checkerSelect.value = checkerSelectMobile.value; });
 
         // ── Conversation history ────────────────────────────────────────
         // Accumulates {role, content} pairs across turns.
@@ -938,13 +1100,12 @@
         }
 
         function updateModelOptions() {
-            if (isOnlineMode) {
-                populateSelect(makerSelect, onlineMakers);
-                populateSelect(checkerSelect, onlineCheckers);
-            } else {
-                populateSelect(makerSelect, onPremMakers);
-                populateSelect(checkerSelect, onPremCheckers);
-            }
+            const makers   = isOnlineMode ? onlineMakers   : onPremMakers;
+            const checkers = isOnlineMode ? onlineCheckers : onPremCheckers;
+            populateSelect(makerSelect,         makers);
+            populateSelect(checkerSelect,       checkers);
+            populateSelect(makerSelectMobile,   makers);
+            populateSelect(checkerSelectMobile, checkers);
         }
 
         function toggleMode() {
@@ -953,25 +1114,23 @@
 
         function setMode(mode) {
             isOnlineMode = mode === 'online';
-            if (isOnlineMode) {
-                modeToggle.classList.add('online');
-                labelOnline.classList.add('active');
-                labelOnPrem.classList.remove('active');
-            } else {
-                modeToggle.classList.remove('online');
-                labelOnPrem.classList.add('active');
-                labelOnline.classList.remove('active');
-            }
+            // Desktop toggle
+            modeToggle.classList.toggle('online', isOnlineMode);
+            labelOnline.classList.toggle('active', isOnlineMode);
+            labelOnPrem.classList.toggle('active', !isOnlineMode);
+            // Mobile toggle (keep in sync)
+            modeToggleMobile.classList.toggle('online', isOnlineMode);
+            labelOnlineMobile.classList.toggle('active', isOnlineMode);
+            labelOnPremMobile.classList.toggle('active', !isOnlineMode);
             updateModelOptions();
         }
 
         // Initialize default UI state
         updateModelOptions();
 
-        // Persist endpoint
+        // Restore saved endpoint in both desktop and mobile inputs
         const saved = localStorage.getItem('mc_endpoint');
-        if (saved) epInput.value = saved;
-        epInput.addEventListener('input', () => localStorage.setItem('mc_endpoint', epInput.value.trim()));
+        if (saved) { epInput.value = saved; epInputMobile.value = saved; }
 
         function usePrompt(el) {
             input.value = el.textContent;
@@ -989,7 +1148,7 @@
         }
 
         function getEndpoint() {
-            const raw = epInput.value.trim();
+            const raw = epInput.value.trim() || epInputMobile.value.trim();
             return raw || null;
         }
 
