@@ -1003,10 +1003,10 @@
         // Initialize default UI state
         updateModelOptions();
 
-        // Persist endpoint
-        const saved = localStorage.getItem('mc_endpoint');
-        if (saved) epInput.value = saved;
-        epInput.addEventListener('input', () => localStorage.setItem('mc_endpoint', epInput.value.trim()));
+        // Hardcode your permanent modal deploy URL here
+        const MY_PERMANENT_URL = "https://adwaithshenoi--maker-checker.modal.run";
+        epInput.value = MY_PERMANENT_URL;
+        epInput.disabled = true;
 
         function usePrompt(el) {
             input.value = el.textContent;
