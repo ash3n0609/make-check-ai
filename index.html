@@ -68,7 +68,8 @@
             max-width: 860px;
             margin: 0 auto;
             padding: 0 16px;
-            position: relative; /* anchor for settings drawer */
+            position: relative;
+            /* anchor for settings drawer */
         }
 
         /* ── Header ── */
@@ -96,10 +97,12 @@
             transition: border-color .15s, color .15s;
             white-space: nowrap;
         }
+
         .new-chat-btn:hover {
             border-color: var(--accent);
             color: var(--text);
         }
+
         .context-counter {
             font-family: var(--mono);
             font-size: 10px;
@@ -111,6 +114,7 @@
             transition: color .2s;
             white-space: nowrap;
         }
+
         .context-counter.active {
             color: var(--accent);
             border-color: var(--accent);
@@ -160,8 +164,16 @@
             transition: border-color .15s, color .15s;
             flex-shrink: 0;
         }
-        .settings-btn:hover { border-color: var(--accent); color: var(--text); }
-        .settings-btn.open { border-color: var(--accent); color: var(--accent); }
+
+        .settings-btn:hover {
+            border-color: var(--accent);
+            color: var(--text);
+        }
+
+        .settings-btn.open {
+            border-color: var(--accent);
+            color: var(--accent);
+        }
 
         /* ── Inline header controls (desktop) ── */
         .header-controls {
@@ -188,19 +200,24 @@
             outline: none;
             cursor: pointer;
         }
-        .model-select:hover { border-color: var(--muted); }
+
+        .model-select:hover {
+            border-color: var(--muted);
+        }
 
         .endpoint-input {
             display: flex;
             align-items: center;
             gap: 6px;
         }
+
         .endpoint-input label {
             font-family: var(--mono);
             font-size: 11px;
             color: var(--muted);
             white-space: nowrap;
         }
+
         .endpoint-input input {
             background: var(--surface2);
             border: 1px solid var(--border);
@@ -212,11 +229,15 @@
             width: 240px;
             outline: none;
         }
-        .endpoint-input input:focus { border-color: var(--accent); }
+
+        .endpoint-input input:focus {
+            border-color: var(--accent);
+        }
 
         /* ── Settings Drawer ── */
         .settings-drawer {
-            display: none; /* JS toggles visibility */
+            display: none;
+            /* JS toggles visibility */
             position: absolute;
             top: 56px;
             left: 0;
@@ -229,11 +250,21 @@
             gap: 12px;
             animation: drawerFade .18s ease both;
         }
-        .settings-drawer.open { display: flex; }
+
+        .settings-drawer.open {
+            display: flex;
+        }
 
         @keyframes drawerFade {
-            from { opacity: 0; transform: translateY(-6px); }
-            to   { opacity: 1; transform: none; }
+            from {
+                opacity: 0;
+                transform: translateY(-6px);
+            }
+
+            to {
+                opacity: 1;
+                transform: none;
+            }
         }
 
         .drawer-row {
@@ -255,7 +286,11 @@
             outline: none;
             box-sizing: border-box;
         }
-        .drawer-endpoint input:focus { border-color: var(--accent); }
+
+        .drawer-endpoint input:focus {
+            border-color: var(--accent);
+        }
+
         .drawer-endpoint label {
             font-family: var(--mono);
             font-size: 11px;
@@ -270,7 +305,11 @@
             gap: 8px;
             flex-wrap: wrap;
         }
-        .drawer-models .model-select { flex: 1; min-width: 120px; }
+
+        .drawer-models .model-select {
+            flex: 1;
+            min-width: 120px;
+        }
 
         /* ── Toggle Switch ── */
         .toggle-container {
@@ -286,6 +325,7 @@
             cursor: pointer;
             transition: color 0.2s;
         }
+
         .toggle-label.active {
             color: var(--text);
             font-weight: 500;
@@ -301,10 +341,12 @@
             cursor: pointer;
             transition: background 0.3s;
         }
+
         .toggle-switch.online {
             background: var(--accent);
             border-color: var(--accent);
         }
+
         .toggle-thumb {
             position: absolute;
             top: 2px;
@@ -315,6 +357,7 @@
             border-radius: 50%;
             transition: transform 0.3s;
         }
+
         .toggle-switch.online .toggle-thumb {
             transform: translateX(16px);
             background: #fff;
@@ -322,13 +365,21 @@
 
         /* ── Responsive breakpoints ── */
         @media (max-width: 700px) {
+
             /* Show gear, hide inline controls */
-            .settings-btn { display: flex; }
-            .header-controls { display: none; }
+            .settings-btn {
+                display: flex;
+            }
+
+            .header-controls {
+                display: none;
+            }
         }
 
         @media (max-width: 700px) {
-            .app { padding: 0 12px; }
+            .app {
+                padding: 0 12px;
+            }
         }
 
         /* ── Feed ── */
@@ -374,8 +425,11 @@
             width: 100%;
             max-width: 480px;
         }
+
         @media (max-width: 440px) {
-            .empty-grid { grid-template-columns: 1fr; }
+            .empty-grid {
+                grid-template-columns: 1fr;
+            }
         }
 
         .empty-chip {
@@ -430,8 +484,11 @@
             max-width: 72%;
             font-size: 14px;
         }
+
         @media (max-width: 700px) {
-            .user-bubble { max-width: 90%; }
+            .user-bubble {
+                max-width: 90%;
+            }
         }
 
         /* ── Model cards ── */
@@ -600,6 +657,43 @@
             font-size: 13px;
             line-height: 1.65;
             margin-top: 4px;
+        }
+
+        /* ── Chain of Thought ── */
+        .think-section {
+            margin-bottom: 12px;
+            background: var(--surface2);
+            border: 1px solid var(--border2);
+            border-radius: var(--radius);
+            overflow: hidden;
+        }
+
+        .think-section summary {
+            padding: 8px 12px;
+            font-family: var(--mono);
+            font-size: 10px;
+            letter-spacing: .08em;
+            color: var(--muted);
+            text-transform: uppercase;
+            cursor: pointer;
+            user-select: none;
+            background: rgba(255, 255, 255, 0.02);
+            transition: background 0.2s, color 0.2s;
+        }
+
+        .think-section summary:hover {
+            background: rgba(255, 255, 255, 0.04);
+            color: var(--text);
+        }
+
+        .think-content {
+            padding: 10px 12px;
+            font-size: 12.5px;
+            color: #8b949e;
+            /* slightly dimmer text to distinguish from actual response */
+            border-top: 1px solid var(--border2);
+            background: #0d1117;
+            /* darker background for internal monologue */
         }
 
         /* ── Skeleton loader ── */
@@ -783,30 +877,62 @@
             color: var(--text);
         }
 
-        .md-body p { margin-bottom: 0.75em; }
-        .md-body p:last-child { margin-bottom: 0; }
+        .md-body p {
+            margin-bottom: 0.75em;
+        }
 
-        .md-body h1, .md-body h2, .md-body h3,
-        .md-body h4, .md-body h5, .md-body h6 {
+        .md-body p:last-child {
+            margin-bottom: 0;
+        }
+
+        .md-body h1,
+        .md-body h2,
+        .md-body h3,
+        .md-body h4,
+        .md-body h5,
+        .md-body h6 {
             font-family: var(--sans);
             font-weight: 500;
             color: var(--text);
             margin: 1em 0 0.4em;
             line-height: 1.3;
         }
-        .md-body h1 { font-size: 1.25em; }
-        .md-body h2 { font-size: 1.1em; }
-        .md-body h3 { font-size: 1em; }
 
-        .md-body ul, .md-body ol {
+        .md-body h1 {
+            font-size: 1.25em;
+        }
+
+        .md-body h2 {
+            font-size: 1.1em;
+        }
+
+        .md-body h3 {
+            font-size: 1em;
+        }
+
+        .md-body ul,
+        .md-body ol {
             padding-left: 1.4em;
             margin-bottom: 0.75em;
         }
-        .md-body li { margin-bottom: 0.25em; }
-        .md-body li::marker { color: var(--muted); }
 
-        .md-body strong { color: #e8eaf6; font-weight: 600; }
-        .md-body em { color: #b0b8d4; font-style: italic; }
+        .md-body li {
+            margin-bottom: 0.25em;
+        }
+
+        .md-body li::marker {
+            color: var(--muted);
+        }
+
+        .md-body strong {
+            color: #e8eaf6;
+            font-weight: 600;
+        }
+
+        .md-body em {
+            color: #b0b8d4;
+            font-style: italic;
+        }
 
         .md-body code {
             font-family: var(--mono);
@@ -863,17 +989,23 @@
             margin: 0.75em 0;
             font-size: 13px;
         }
-        .md-body th, .md-body td {
+
+        .md-body th,
+        .md-body td {
             border: 1px solid var(--border);
             padding: 6px 10px;
             text-align: left;
         }
+
         .md-body th {
             background: var(--surface2);
             font-weight: 500;
             color: var(--text);
         }
-        .md-body td { color: var(--muted); }
+
+        .md-body td {
+            color: var(--muted);
+        }
 
         .md-body hr {
             border: none;
@@ -894,7 +1026,8 @@
             </div>
 
             <!-- New Chat + context (always visible) -->
-            <button class="new-chat-btn" id="newChatBtn" onclick="newChat()" title="Clear conversation history">✦ new chat</button>
+            <button class="new-chat-btn" id="newChatBtn" onclick="newChat()" title="Clear conversation history">✦ new
+                chat</button>
             <span class="context-counter" id="ctxCounter" title="Messages in context">0 turns</span>
 
             <!-- Desktop inline controls -->
@@ -980,22 +1113,22 @@
         const ctxCounter = document.getElementById('ctxCounter');
 
         // Desktop controls
-        const epInput        = document.getElementById('endpointInput');
-        const makerSelect    = document.getElementById('makerSelect');
-        const checkerSelect  = document.getElementById('checkerSelect');
-        const modeToggle     = document.getElementById('modeToggle');
-        const labelOnPrem    = document.getElementById('labelOnPrem');
-        const labelOnline    = document.getElementById('labelOnline');
+        const epInput = document.getElementById('endpointInput');
+        const makerSelect = document.getElementById('makerSelect');
+        const checkerSelect = document.getElementById('checkerSelect');
+        const modeToggle = document.getElementById('modeToggle');
+        const labelOnPrem = document.getElementById('labelOnPrem');
+        const labelOnline = document.getElementById('labelOnline');
 
         // Mobile drawer controls
-        const settingsBtn         = document.getElementById('settingsBtn');
-        const settingsDrawer      = document.getElementById('settingsDrawer');
-        const epInputMobile       = document.getElementById('endpointInputMobile');
-        const makerSelectMobile   = document.getElementById('makerSelectMobile');
+        const settingsBtn = document.getElementById('settingsBtn');
+        const settingsDrawer = document.getElementById('settingsDrawer');
+        const epInputMobile = document.getElementById('endpointInputMobile');
+        const makerSelectMobile = document.getElementById('makerSelectMobile');
         const checkerSelectMobile = document.getElementById('checkerSelectMobile');
-        const modeToggleMobile    = document.getElementById('modeToggleMobile');
-        const labelOnPremMobile   = document.getElementById('labelOnPremMobile');
-        const labelOnlineMobile   = document.getElementById('labelOnlineMobile');
+        const modeToggleMobile = document.getElementById('modeToggleMobile');
+        const labelOnPremMobile = document.getElementById('labelOnPremMobile');
+        const labelOnlineMobile = document.getElementById('labelOnlineMobile');
 
         // ── Settings drawer toggle ──────────────────────────────────────
         settingsBtn.addEventListener('click', (e) => {
@@ -1100,11 +1233,11 @@
         }
 
         function updateModelOptions() {
-            const makers   = isOnlineMode ? onlineMakers   : onPremMakers;
+            const makers = isOnlineMode ? onlineMakers : onPremMakers;
             const checkers = isOnlineMode ? onlineCheckers : onPremCheckers;
-            populateSelect(makerSelect,         makers);
-            populateSelect(checkerSelect,       checkers);
-            populateSelect(makerSelectMobile,   makers);
+            populateSelect(makerSelect, makers);
+            populateSelect(checkerSelect, checkers);
+            populateSelect(makerSelectMobile, makers);
             populateSelect(checkerSelectMobile, checkers);
         }
 
@@ -1128,9 +1261,13 @@
         // Initialize default UI state
         updateModelOptions();
 
-        // Restore saved endpoint in both desktop and mobile inputs
-        const saved = localStorage.getItem('mc_endpoint');
-        if (saved) { epInput.value = saved; epInputMobile.value = saved; }
+        // Hardcode your permanent modal deploy URL here
+        const MY_PERMANENT_URL = "https://adwaithshenoi--maker-checker.modal.run";
+        epInput.value = MY_PERMANENT_URL;
+        epInput.disabled = true;
+        // Keep mobile input in sync
+        epInputMobile.value = MY_PERMANENT_URL;
+        epInputMobile.disabled = true;
 
         function usePrompt(el) {
             input.value = el.textContent;
@@ -1216,6 +1353,13 @@
                 ? `<div class="checker-section"><div class="checker-label">improved response</div><div class="improved-box md-body">${renderMd(checker.improved)}</div></div>`
                 : '';
 
+            const thinkHtml = checker.think
+                ? `<details class="think-section">
+                     <summary>Chain of Thought</summary>
+                     <div class="think-content md-body">${renderMd(checker.think)}</div>
+                   </details>`
+                : '';
+
             turn.innerHTML = `
     <div class="cards">
       <div class="card maker">
@@ -1233,6 +1377,7 @@
           <span class="model">${checkerName}</span>
         </div>
         <div class="card-body">
+          ${thinkHtml}
           <div class="verdict ${vc}">${checker.verdict || 'PASS'}</div>
           <div class="checker-section">
             <div class="checker-label">issues</div>
@@ -1381,7 +1526,7 @@
         marked.setOptions({
             breaks: true,
             gfm: true,
-            highlight: function(code, lang) {
+            highlight: function (code, lang) {
                 try {
                     if (lang && hljs.getLanguage(lang)) {
                         return hljs.highlight(code, { language: lang, ignoreIllegals: true }).value;
@@ -1396,7 +1541,7 @@
 
         // Custom renderer to add language label and pre styling
         const renderer = new marked.Renderer();
-        renderer.code = function(code, lang) {
+        renderer.code = function (code, lang) {
             let highlighted;
             try {
                 if (lang && hljs.getLanguage(lang)) {
@@ -1416,7 +1561,7 @@
             if (!text) return '';
             try {
                 return marked.parse(String(text));
-            } catch(e) {
+            } catch (e) {
                 return escHtml(text);
             }
         }

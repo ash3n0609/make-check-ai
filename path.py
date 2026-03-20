@@ -199,7 +199,7 @@ class Checker:
             {"role": "system", "content": CHECKER_SYSTEM},
             {"role": "user",   "content": user_message},
         ]
-        result = self.pipe(messages, max_new_tokens=768, do_sample=False)
+        result = self.pipe(messages, max_new_tokens=2048, do_sample=False)
         self._last_active = time.time()  # reset again after inference
         review = result[0]["generated_text"][-1]["content"]
         print(f"[Checker] Review:\n{review}\n")
@@ -217,6 +217,10 @@ def strip_think(text: str) -> str:
 
 def parse_checker_output(review: str) -> dict:
     """Strip <think> block, parse XML tags."""
+    # Extract chain-of-thought content before stripping it
+    think_match = re.search(r"<think>(.*?)</think>", review, flags=re.DOTALL)
+    think_content = think_match.group(1).strip() if think_match else ""
+
     clean = strip_think(review)
 
     def extract(tag: str) -> str:
@@ -232,6 +236,7 @@ def parse_checker_output(review: str) -> dict:
         "issues":    extract("issues"),
         "strengths": extract("strengths"),
         "improved":  extract("improved"),
+        "think":     think_content,
         "raw":       clean,
     }
 
