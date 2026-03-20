@@ -509,6 +509,41 @@
             margin-top: 4px;
         }
 
+        /* ── Chain of Thought ── */
+        .think-section {
+            margin-bottom: 12px;
+            background: var(--surface2);
+            border: 1px solid var(--border2);
+            border-radius: var(--radius);
+            overflow: hidden;
+        }
+
+        .think-section summary {
+            padding: 8px 12px;
+            font-family: var(--mono);
+            font-size: 10px;
+            letter-spacing: .08em;
+            color: var(--muted);
+            text-transform: uppercase;
+            cursor: pointer;
+            user-select: none;
+            background: rgba(255, 255, 255, 0.02);
+            transition: background 0.2s, color 0.2s;
+        }
+
+        .think-section summary:hover {
+            background: rgba(255, 255, 255, 0.04);
+            color: var(--text);
+        }
+
+        .think-content {
+            padding: 10px 12px;
+            font-size: 12.5px;
+            color: #8b949e;  /* slightly dimmer text to distinguish from actual response */
+            border-top: 1px solid var(--border2);
+            background: #0d1117; /* darker background for internal monologue */
+        }
+
         /* ── Skeleton loader ── */
         .skeleton-cards {
             display: grid;
@@ -1056,6 +1091,13 @@
             const improved = checker.improved && checker.improved.toLowerCase() !== 'n/a'
                 ? `<div class="checker-section"><div class="checker-label">improved response</div><div class="improved-box md-body">${renderMd(checker.improved)}</div></div>`
                 : '';
+                
+            const thinkHtml = checker.think 
+                ? `<details class="think-section">
+                     <summary>Chain of Thought</summary>
+                     <div class="think-content md-body">${renderMd(checker.think)}</div>
+                   </details>`
+                : '';
 
             turn.innerHTML = `
     <div class="cards">
@@ -1074,6 +1116,7 @@
           <span class="model">${checkerName}</span>
         </div>
         <div class="card-body">
+          ${thinkHtml}
           <div class="verdict ${vc}">${checker.verdict || 'PASS'}</div>
           <div class="checker-section">
             <div class="checker-label">issues</div>
