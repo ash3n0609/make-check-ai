@@ -50,6 +50,58 @@
             --radius-lg: 16px;
         }
 
+        /* ── Light mode overrides ── */
+        html[data-theme="light"] {
+            --bg: #f5f4f0;
+            --surface: #ffffff;
+            --surface2: #ededea;
+            --border: #d8d6cf;
+            --border2: #c4c2ba;
+            --text: #1a1a1a;
+            --muted: #7a7870;
+            --accent: #3b63f5;
+            --accent2: #7c3aed;
+            --maker: #12815f;
+            --maker-bg: #d4f0e8;
+            --checker: #c4601a;
+            --checker-bg: #fde8d5;
+            --pass: #15803d;
+            --pass-bg: #dcfce7;
+            --fail: #dc2626;
+            --fail-bg: #fee2e2;
+            --note: #a16207;
+            --note-bg: #fef9c3;
+        }
+
+        html[data-theme="light"] .think-content {
+            background: #f0ede8;
+            color: #5a5850;
+        }
+
+        html[data-theme="light"] .md-body pre {
+            background: #1e1e2e;
+        }
+
+        html[data-theme="light"] .card.maker {
+            border-color: #a7d9c8;
+        }
+
+        html[data-theme="light"] .card.checker {
+            border-color: #f0c49a;
+        }
+
+        html[data-theme="light"] .verdict.pass {
+            border-color: #86efac;
+        }
+
+        html[data-theme="light"] .verdict.fail {
+            border-color: #fca5a5;
+        }
+
+        html[data-theme="light"] .verdict.notes {
+            border-color: #fde047;
+        }
+
         html,
         body {
             height: 100%;
@@ -191,6 +243,39 @@
 
         .endpoint-input input:focus {
             border-color: var(--accent);
+        }
+
+        /* ── Theme Toggle Button ── */
+        .theme-btn {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            width: 32px;
+            height: 32px;
+            border-radius: 8px;
+            border: 1px solid var(--border);
+            background: var(--surface2);
+            cursor: pointer;
+            transition: border-color .2s, background .2s, transform .15s;
+            flex-shrink: 0;
+            color: var(--muted);
+        }
+
+        .theme-btn:hover {
+            border-color: var(--accent);
+            color: var(--text);
+            transform: rotate(15deg);
+        }
+
+        .theme-btn svg {
+            width: 15px;
+            height: 15px;
+            fill: none;
+            stroke: currentColor;
+            stroke-width: 2;
+            stroke-linecap: round;
+            stroke-linejoin: round;
+            transition: opacity .2s;
         }
 
         /* ── Toggle Switch ── */
@@ -857,6 +942,25 @@
                 <span class="logo-sep">·</span>
                 <select id="checkerSelect" class="model-select"></select>
             </div>
+
+            <button class="theme-btn" id="themeBtn" title="Toggle light/dark mode" onclick="toggleTheme()">
+                <!-- Sun icon (shown in dark mode) -->
+                <svg id="iconSun" viewBox="0 0 24 24">
+                    <circle cx="12" cy="12" r="5"/>
+                    <line x1="12" y1="1" x2="12" y2="3"/>
+                    <line x1="12" y1="21" x2="12" y2="23"/>
+                    <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/>
+                    <line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/>
+                    <line x1="1" y1="12" x2="3" y2="12"/>
+                    <line x1="21" y1="12" x2="23" y2="12"/>
+                    <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/>
+                    <line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/>
+                </svg>
+                <!-- Moon icon (shown in light mode) -->
+                <svg id="iconMoon" viewBox="0 0 24 24" style="display:none">
+                    <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/>
+                </svg>
+            </button>
         </header>
 
         <div class="feed" id="feed">
@@ -899,6 +1003,41 @@
         const labelOnPrem = document.getElementById('labelOnPrem');
         const labelOnline = document.getElementById('labelOnline');
         const ctxCounter = document.getElementById('ctxCounter');
+        const themeBtn = document.getElementById('themeBtn');
+        const iconSun = document.getElementById('iconSun');
+        const iconMoon = document.getElementById('iconMoon');
+
+        // ── Theme persistence ───────────────────────────────────────────
+        function applyTheme(theme) {
+            document.documentElement.setAttribute('data-theme', theme);
+            if (theme === 'light') {
+                iconSun.style.display = 'none';
+                iconMoon.style.display = 'block';
+                themeBtn.title = 'Switch to dark mode';
+            } else {
+                iconSun.style.display = 'block';
+                iconMoon.style.display = 'none';
+                themeBtn.title = 'Switch to light mode';
+            }
+            localStorage.setItem('theme', theme);
+        }
+
+        function toggleTheme() {
+            const current = document.documentElement.getAttribute('data-theme') || 'dark';
+            applyTheme(current === 'dark' ? 'light' : 'dark');
+        }
+
+        // Apply saved or system-preferred theme on load
+        (function initTheme() {
+            const saved = localStorage.getItem('theme');
+            if (saved) {
+                applyTheme(saved);
+            } else {
+                const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+                applyTheme(prefersDark ? 'dark' : 'light');
+            }
+        })();
+        // ───────────────────────────────────────────────────────────────
 
         // ── Conversation history ────────────────────────────────────────
         // Accumulates {role, content} pairs across turns.
