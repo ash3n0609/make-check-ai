@@ -210,13 +210,18 @@ class Checker:
 # Response parser
 # ═══════════════════════════════════════════════════════════
 
+def strip_think(text: str) -> str:
+    """Remove <think>…</think> chain-of-thought blocks from any model output."""
+    return re.sub(r"<think>.*?</think>", "", text, flags=re.DOTALL).strip()
+
+
 def parse_checker_output(review: str) -> dict:
     """Strip <think> block, parse XML tags."""
-    # Extract the <think> block if it exists
+    # Extract chain-of-thought content before stripping it
     think_match = re.search(r"<think>(.*?)</think>", review, flags=re.DOTALL)
     think_content = think_match.group(1).strip() if think_match else ""
 
-    clean = re.sub(r"<think>.*?</think>", "", review, flags=re.DOTALL).strip()
+    clean = strip_think(review)
 
     def extract(tag: str) -> str:
         # Match <tag>content</tag> across multiple lines
@@ -370,10 +375,14 @@ async def web_check(body: dict):
             maker = Maker()
             draft = await maker.generate.remote.aio(messages)
 
+        # Strip chain-of-thought tokens before rendering or passing to checker
+        # (works for both on-prem models like Qwen3 and online models like Gemini)
+        draft = strip_think(draft)
+
         yield f"data: {json.dumps({'step': 'maker', 'draft': draft, 'model': maker_model_id})}\n\n"
 
         # ── CHECKER ────────────────────────────────────────────────
-        # The Checker is always single-turn: it only reviews the current draft.
+        # The Checker is always single-turn: it only reviews the current (clean) draft.
         checker_user_msg = (
             f"ORIGINAL PROMPT:\n{prompt}\n\n"
             f"DRAFT RESPONSE:\n{draft}"

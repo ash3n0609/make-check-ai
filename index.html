@@ -115,19 +115,23 @@
         /* ── Layout ── */
         .app {
             display: grid;
-            grid-template-rows: 56px 1fr 80px;
+            grid-template-rows: 56px 1fr auto;
             height: 100vh;
             max-width: 860px;
             margin: 0 auto;
             padding: 0 16px;
+            position: relative;
+            /* anchor for settings drawer */
         }
 
         /* ── Header ── */
         header {
             display: flex;
             align-items: center;
-            gap: 12px;
+            gap: 10px;
             border-bottom: 1px solid var(--border);
+            position: relative;
+            z-index: 10;
         }
 
         .new-chat-btn {
@@ -145,21 +149,24 @@
             transition: border-color .15s, color .15s;
             white-space: nowrap;
         }
+
         .new-chat-btn:hover {
             border-color: var(--accent);
             color: var(--text);
         }
+
         .context-counter {
             font-family: var(--mono);
             font-size: 10px;
             color: var(--muted);
-            margin-left: 4px;
             padding: 2px 6px;
             background: var(--surface2);
             border: 1px solid var(--border);
             border-radius: 4px;
             transition: color .2s;
+            white-space: nowrap;
         }
+
         .context-counter.active {
             color: var(--accent);
             border-color: var(--accent);
@@ -192,8 +199,43 @@
             font-family: var(--mono);
         }
 
-        .badge {
+        /* ── Settings gear button (mobile only by default, hidden on desktop) ── */
+        .settings-btn {
+            display: none;
             margin-left: auto;
+            background: none;
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            color: var(--muted);
+            font-size: 15px;
+            width: 32px;
+            height: 32px;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            transition: border-color .15s, color .15s;
+            flex-shrink: 0;
+        }
+
+        .settings-btn:hover {
+            border-color: var(--accent);
+            color: var(--text);
+        }
+
+        .settings-btn.open {
+            border-color: var(--accent);
+            color: var(--accent);
+        }
+
+        /* ── Inline header controls (desktop) ── */
+        .header-controls {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-left: auto;
+        }
+
+        .badge {
             display: flex;
             gap: 8px;
             align-items: center;
@@ -219,7 +261,6 @@
             display: flex;
             align-items: center;
             gap: 6px;
-            margin-left: 16px;
         }
 
         .endpoint-input label {
@@ -237,7 +278,7 @@
             font-family: var(--mono);
             font-size: 11px;
             padding: 3px 8px;
-            width: 280px;
+            width: 240px;
             outline: none;
         }
 
@@ -245,6 +286,7 @@
             border-color: var(--accent);
         }
 
+<<<<<<< HEAD
         /* ── Theme Toggle Button ── */
         .theme-btn {
             display: flex;
@@ -276,6 +318,83 @@
             stroke-linecap: round;
             stroke-linejoin: round;
             transition: opacity .2s;
+=======
+        /* ── Settings Drawer ── */
+        .settings-drawer {
+            display: none;
+            /* JS toggles visibility */
+            position: absolute;
+            top: 56px;
+            left: 0;
+            right: 0;
+            background: var(--surface);
+            border-bottom: 1px solid var(--border);
+            padding: 14px 16px;
+            z-index: 100;
+            flex-direction: column;
+            gap: 12px;
+            animation: drawerFade .18s ease both;
+        }
+
+        .settings-drawer.open {
+            display: flex;
+        }
+
+        @keyframes drawerFade {
+            from {
+                opacity: 0;
+                transform: translateY(-6px);
+            }
+
+            to {
+                opacity: 1;
+                transform: none;
+            }
+        }
+
+        .drawer-row {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            flex-wrap: wrap;
+        }
+
+        .drawer-endpoint input {
+            background: var(--surface2);
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            color: var(--text);
+            font-family: var(--mono);
+            font-size: 12px;
+            padding: 6px 10px;
+            width: 100%;
+            outline: none;
+            box-sizing: border-box;
+        }
+
+        .drawer-endpoint input:focus {
+            border-color: var(--accent);
+        }
+
+        .drawer-endpoint label {
+            font-family: var(--mono);
+            font-size: 11px;
+            color: var(--muted);
+            margin-bottom: 4px;
+            display: block;
+        }
+
+        /* Drawer model selects go full-width on very small screens */
+        .drawer-models {
+            display: flex;
+            gap: 8px;
+            flex-wrap: wrap;
+        }
+
+        .drawer-models .model-select {
+            flex: 1;
+            min-width: 120px;
+>>>>>>> be1f4111e66d2504e87d07dac5c30a54a8b0f5dd
         }
 
         /* ── Toggle Switch ── */
@@ -283,7 +402,6 @@
             display: flex;
             align-items: center;
             gap: 8px;
-            margin-left: 16px;
         }
 
         .toggle-label {
@@ -331,6 +449,25 @@
             background: #fff;
         }
 
+        /* ── Responsive breakpoints ── */
+        @media (max-width: 700px) {
+
+            /* Show gear, hide inline controls */
+            .settings-btn {
+                display: flex;
+            }
+
+            .header-controls {
+                display: none;
+            }
+        }
+
+        @media (max-width: 700px) {
+            .app {
+                padding: 0 12px;
+            }
+        }
+
         /* ── Feed ── */
         .feed {
             overflow-y: auto;
@@ -371,6 +508,14 @@
             grid-template-columns: 1fr 1fr;
             gap: 8px;
             margin-top: 8px;
+            width: 100%;
+            max-width: 480px;
+        }
+
+        @media (max-width: 440px) {
+            .empty-grid {
+                grid-template-columns: 1fr;
+            }
         }
 
         .empty-chip {
@@ -424,6 +569,12 @@
             padding: 10px 16px;
             max-width: 72%;
             font-size: 14px;
+        }
+
+        @media (max-width: 700px) {
+            .user-bubble {
+                max-width: 90%;
+            }
         }
 
         /* ── Model cards ── */
@@ -624,9 +775,11 @@
         .think-content {
             padding: 10px 12px;
             font-size: 12.5px;
-            color: #8b949e;  /* slightly dimmer text to distinguish from actual response */
+            color: #8b949e;
+            /* slightly dimmer text to distinguish from actual response */
             border-top: 1px solid var(--border2);
-            background: #0d1117; /* darker background for internal monologue */
+            background: #0d1117;
+            /* darker background for internal monologue */
         }
 
         /* ── Skeleton loader ── */
@@ -724,7 +877,8 @@
             display: flex;
             align-items: center;
             gap: 10px;
-            padding: 12px 0 16px;
+            padding: 12px 0;
+            padding-bottom: max(16px, env(safe-area-inset-bottom, 16px));
             border-top: 1px solid var(--border);
         }
 
@@ -809,30 +963,62 @@
             color: var(--text);
         }
 
-        .md-body p { margin-bottom: 0.75em; }
-        .md-body p:last-child { margin-bottom: 0; }
+        .md-body p {
+            margin-bottom: 0.75em;
+        }
 
-        .md-body h1, .md-body h2, .md-body h3,
-        .md-body h4, .md-body h5, .md-body h6 {
+        .md-body p:last-child {
+            margin-bottom: 0;
+        }
+
+        .md-body h1,
+        .md-body h2,
+        .md-body h3,
+        .md-body h4,
+        .md-body h5,
+        .md-body h6 {
             font-family: var(--sans);
             font-weight: 500;
             color: var(--text);
             margin: 1em 0 0.4em;
             line-height: 1.3;
         }
-        .md-body h1 { font-size: 1.25em; }
-        .md-body h2 { font-size: 1.1em; }
-        .md-body h3 { font-size: 1em; }
 
-        .md-body ul, .md-body ol {
+        .md-body h1 {
+            font-size: 1.25em;
+        }
+
+        .md-body h2 {
+            font-size: 1.1em;
+        }
+
+        .md-body h3 {
+            font-size: 1em;
+        }
+
+        .md-body ul,
+        .md-body ol {
             padding-left: 1.4em;
             margin-bottom: 0.75em;
         }
-        .md-body li { margin-bottom: 0.25em; }
-        .md-body li::marker { color: var(--muted); }
 
-        .md-body strong { color: #e8eaf6; font-weight: 600; }
-        .md-body em { color: #b0b8d4; font-style: italic; }
+        .md-body li {
+            margin-bottom: 0.25em;
+        }
+
+        .md-body li::marker {
+            color: var(--muted);
+        }
+
+        .md-body strong {
+            color: #e8eaf6;
+            font-weight: 600;
+        }
+
+        .md-body em {
+            color: #b0b8d4;
+            font-style: italic;
+        }
 
         .md-body code {
             font-family: var(--mono);
@@ -889,17 +1075,23 @@
             margin: 0.75em 0;
             font-size: 13px;
         }
-        .md-body th, .md-body td {
+
+        .md-body th,
+        .md-body td {
             border: 1px solid var(--border);
             padding: 6px 10px;
             text-align: left;
         }
+
         .md-body th {
             background: var(--surface2);
             font-weight: 500;
             color: var(--text);
         }
-        .md-body td { color: var(--muted); }
+
+        .md-body td {
+            color: var(--muted);
+        }
 
         .md-body hr {
             border: none;
@@ -918,25 +1110,33 @@
                 <span class="logo-sep">·</span>
                 <span class="logo-title">checker</span>
             </div>
-            <!-- New Chat button + context turn counter -->
-            <button class="new-chat-btn" id="newChatBtn" onclick="newChat()" title="Clear conversation history">
-                ✦ new chat
-            </button>
+
+            <!-- New Chat + context (always visible) -->
+            <button class="new-chat-btn" id="newChatBtn" onclick="newChat()" title="Clear conversation history">✦ new
+                chat</button>
             <span class="context-counter" id="ctxCounter" title="Messages in context">0 turns</span>
 
-            <div class="endpoint-input">
-                <label>endpoint</label>
-                <input type="text" id="endpointInput" placeholder="https://your-name--maker-checker.modal.run" />
-            </div>
-
-            <div class="toggle-container">
-                <span class="toggle-label active" id="labelOnPrem" onclick="setMode('onprem')">On-Prem</span>
-                <div class="toggle-switch" id="modeToggle" onclick="toggleMode()">
-                    <div class="toggle-thumb"></div>
+            <!-- Desktop inline controls -->
+            <div class="header-controls">
+                <div class="endpoint-input">
+                    <label>endpoint</label>
+                    <input type="text" id="endpointInput" placeholder="https://your-name--maker-checker.modal.run" />
                 </div>
-                <span class="toggle-label" id="labelOnline" onclick="setMode('online')">Online</span>
+                <div class="toggle-container">
+                    <span class="toggle-label active" id="labelOnPrem" onclick="setMode('onprem')">On-Prem</span>
+                    <div class="toggle-switch" id="modeToggle" onclick="toggleMode()">
+                        <div class="toggle-thumb"></div>
+                    </div>
+                    <span class="toggle-label" id="labelOnline" onclick="setMode('online')">Online</span>
+                </div>
+                <div class="badge">
+                    <select id="makerSelect" class="model-select"></select>
+                    <span class="logo-sep">·</span>
+                    <select id="checkerSelect" class="model-select"></select>
+                </div>
             </div>
 
+<<<<<<< HEAD
             <div class="badge">
                 <select id="makerSelect" class="model-select"></select>
                 <span class="logo-sep">·</span>
@@ -961,7 +1161,34 @@
                     <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/>
                 </svg>
             </button>
+=======
+            <!-- Mobile gear button -->
+            <button class="settings-btn" id="settingsBtn" title="Settings">⚙</button>
+>>>>>>> be1f4111e66d2504e87d07dac5c30a54a8b0f5dd
         </header>
+
+        <!-- Mobile settings drawer (hidden by default, shown on small screens) -->
+        <div class="settings-drawer" id="settingsDrawer">
+            <!-- Endpoint -->
+            <div class="drawer-endpoint">
+                <label>endpoint</label>
+                <input type="text" id="endpointInputMobile" placeholder="https://your-name--maker-checker.modal.run" />
+            </div>
+            <!-- Mode toggle + model selects -->
+            <div class="drawer-row">
+                <div class="toggle-container">
+                    <span class="toggle-label active" id="labelOnPremMobile" onclick="setMode('onprem')">On-Prem</span>
+                    <div class="toggle-switch" id="modeToggleMobile" onclick="toggleMode()">
+                        <div class="toggle-thumb"></div>
+                    </div>
+                    <span class="toggle-label" id="labelOnlineMobile" onclick="setMode('online')">Online</span>
+                </div>
+            </div>
+            <div class="drawer-models">
+                <select id="makerSelectMobile" class="model-select"></select>
+                <select id="checkerSelectMobile" class="model-select"></select>
+            </div>
+        </div>
 
         <div class="feed" id="feed">
             <div class="empty" id="emptyState">
@@ -996,12 +1223,16 @@
         let emptyState = document.getElementById('emptyState');
         const input = document.getElementById('promptInput');
         const sendBtn = document.getElementById('sendBtn');
+        const ctxCounter = document.getElementById('ctxCounter');
+
+        // Desktop controls
         const epInput = document.getElementById('endpointInput');
         const makerSelect = document.getElementById('makerSelect');
         const checkerSelect = document.getElementById('checkerSelect');
         const modeToggle = document.getElementById('modeToggle');
         const labelOnPrem = document.getElementById('labelOnPrem');
         const labelOnline = document.getElementById('labelOnline');
+<<<<<<< HEAD
         const ctxCounter = document.getElementById('ctxCounter');
         const themeBtn = document.getElementById('themeBtn');
         const iconSun = document.getElementById('iconSun');
@@ -1038,6 +1269,48 @@
             }
         })();
         // ───────────────────────────────────────────────────────────────
+=======
+
+        // Mobile drawer controls
+        const settingsBtn = document.getElementById('settingsBtn');
+        const settingsDrawer = document.getElementById('settingsDrawer');
+        const epInputMobile = document.getElementById('endpointInputMobile');
+        const makerSelectMobile = document.getElementById('makerSelectMobile');
+        const checkerSelectMobile = document.getElementById('checkerSelectMobile');
+        const modeToggleMobile = document.getElementById('modeToggleMobile');
+        const labelOnPremMobile = document.getElementById('labelOnPremMobile');
+        const labelOnlineMobile = document.getElementById('labelOnlineMobile');
+
+        // ── Settings drawer toggle ──────────────────────────────────────
+        settingsBtn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            const open = settingsDrawer.classList.toggle('open');
+            settingsBtn.classList.toggle('open', open);
+        });
+        // Close drawer when tapping outside
+        document.addEventListener('click', (e) => {
+            if (!settingsDrawer.contains(e.target) && e.target !== settingsBtn) {
+                settingsDrawer.classList.remove('open');
+                settingsBtn.classList.remove('open');
+            }
+        });
+
+        // ── Endpoint sync (desktop ↔ mobile) ───────────────────────────
+        epInput.addEventListener('input', () => {
+            epInputMobile.value = epInput.value;
+            localStorage.setItem('mc_endpoint', epInput.value.trim());
+        });
+        epInputMobile.addEventListener('input', () => {
+            epInput.value = epInputMobile.value;
+            localStorage.setItem('mc_endpoint', epInputMobile.value.trim());
+        });
+
+        // ── Model select sync ───────────────────────────────────────────
+        makerSelect.addEventListener('change', () => { makerSelectMobile.value = makerSelect.value; });
+        checkerSelect.addEventListener('change', () => { checkerSelectMobile.value = checkerSelect.value; });
+        makerSelectMobile.addEventListener('change', () => { makerSelect.value = makerSelectMobile.value; });
+        checkerSelectMobile.addEventListener('change', () => { checkerSelect.value = checkerSelectMobile.value; });
+>>>>>>> be1f4111e66d2504e87d07dac5c30a54a8b0f5dd
 
         // ── Conversation history ────────────────────────────────────────
         // Accumulates {role, content} pairs across turns.
@@ -1112,13 +1385,12 @@
         }
 
         function updateModelOptions() {
-            if (isOnlineMode) {
-                populateSelect(makerSelect, onlineMakers);
-                populateSelect(checkerSelect, onlineCheckers);
-            } else {
-                populateSelect(makerSelect, onPremMakers);
-                populateSelect(checkerSelect, onPremCheckers);
-            }
+            const makers = isOnlineMode ? onlineMakers : onPremMakers;
+            const checkers = isOnlineMode ? onlineCheckers : onPremCheckers;
+            populateSelect(makerSelect, makers);
+            populateSelect(checkerSelect, checkers);
+            populateSelect(makerSelectMobile, makers);
+            populateSelect(checkerSelectMobile, checkers);
         }
 
         function toggleMode() {
@@ -1127,15 +1399,14 @@
 
         function setMode(mode) {
             isOnlineMode = mode === 'online';
-            if (isOnlineMode) {
-                modeToggle.classList.add('online');
-                labelOnline.classList.add('active');
-                labelOnPrem.classList.remove('active');
-            } else {
-                modeToggle.classList.remove('online');
-                labelOnPrem.classList.add('active');
-                labelOnline.classList.remove('active');
-            }
+            // Desktop toggle
+            modeToggle.classList.toggle('online', isOnlineMode);
+            labelOnline.classList.toggle('active', isOnlineMode);
+            labelOnPrem.classList.toggle('active', !isOnlineMode);
+            // Mobile toggle (keep in sync)
+            modeToggleMobile.classList.toggle('online', isOnlineMode);
+            labelOnlineMobile.classList.toggle('active', isOnlineMode);
+            labelOnPremMobile.classList.toggle('active', !isOnlineMode);
             updateModelOptions();
         }
 
@@ -1146,6 +1417,9 @@
         const MY_PERMANENT_URL = "https://adwaithshenoi--maker-checker.modal.run";
         epInput.value = MY_PERMANENT_URL;
         epInput.disabled = true;
+        // Keep mobile input in sync
+        epInputMobile.value = MY_PERMANENT_URL;
+        epInputMobile.disabled = true;
 
         function usePrompt(el) {
             input.value = el.textContent;
@@ -1163,7 +1437,7 @@
         }
 
         function getEndpoint() {
-            const raw = epInput.value.trim();
+            const raw = epInput.value.trim() || epInputMobile.value.trim();
             return raw || null;
         }
 
@@ -1230,8 +1504,8 @@
             const improved = checker.improved && checker.improved.toLowerCase() !== 'n/a'
                 ? `<div class="checker-section"><div class="checker-label">improved response</div><div class="improved-box md-body">${renderMd(checker.improved)}</div></div>`
                 : '';
-                
-            const thinkHtml = checker.think 
+
+            const thinkHtml = checker.think
                 ? `<details class="think-section">
                      <summary>Chain of Thought</summary>
                      <div class="think-content md-body">${renderMd(checker.think)}</div>
@@ -1404,7 +1678,7 @@
         marked.setOptions({
             breaks: true,
             gfm: true,
-            highlight: function(code, lang) {
+            highlight: function (code, lang) {
                 try {
                     if (lang && hljs.getLanguage(lang)) {
                         return hljs.highlight(code, { language: lang, ignoreIllegals: true }).value;
@@ -1419,7 +1693,7 @@
 
         // Custom renderer to add language label and pre styling
         const renderer = new marked.Renderer();
-        renderer.code = function(code, lang) {
+        renderer.code = function (code, lang) {
             let highlighted;
             try {
                 if (lang && hljs.getLanguage(lang)) {
@@ -1439,7 +1713,7 @@
             if (!text) return '';
             try {
                 return marked.parse(String(text));
-            } catch(e) {
+            } catch (e) {
                 return escHtml(text);
             }
         }
