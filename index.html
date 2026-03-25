@@ -286,7 +286,6 @@
             border-color: var(--accent);
         }
 
-<<<<<<< HEAD
         /* ── Theme Toggle Button ── */
         .theme-btn {
             display: flex;
@@ -317,8 +316,12 @@
             stroke-width: 2;
             stroke-linecap: round;
             stroke-linejoin: round;
-            transition: opacity .2s;
-=======
+        }
+
+        .theme-btn .icon-moon { display: none; }
+        html[data-theme="light"] .theme-btn .icon-sun { display: none; }
+        html[data-theme="light"] .theme-btn .icon-moon { display: block; }
+
         /* ── Settings Drawer ── */
         .settings-drawer {
             display: none;
@@ -394,7 +397,6 @@
         .drawer-models .model-select {
             flex: 1;
             min-width: 120px;
->>>>>>> be1f4111e66d2504e87d07dac5c30a54a8b0f5dd
         }
 
         /* ── Toggle Switch ── */
@@ -1134,37 +1136,15 @@
                     <span class="logo-sep">·</span>
                     <select id="checkerSelect" class="model-select"></select>
                 </div>
+
+                <button class="theme-btn" onclick="toggleTheme()" title="Toggle appearance">
+                    <svg class="icon-sun" viewBox="0 0 24 24"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/></svg>
+                    <svg class="icon-moon" viewBox="0 0 24 24"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
+                </button>
             </div>
 
-<<<<<<< HEAD
-            <div class="badge">
-                <select id="makerSelect" class="model-select"></select>
-                <span class="logo-sep">·</span>
-                <select id="checkerSelect" class="model-select"></select>
-            </div>
-
-            <button class="theme-btn" id="themeBtn" title="Toggle light/dark mode" onclick="toggleTheme()">
-                <!-- Sun icon (shown in dark mode) -->
-                <svg id="iconSun" viewBox="0 0 24 24">
-                    <circle cx="12" cy="12" r="5"/>
-                    <line x1="12" y1="1" x2="12" y2="3"/>
-                    <line x1="12" y1="21" x2="12" y2="23"/>
-                    <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/>
-                    <line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/>
-                    <line x1="1" y1="12" x2="3" y2="12"/>
-                    <line x1="21" y1="12" x2="23" y2="12"/>
-                    <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/>
-                    <line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/>
-                </svg>
-                <!-- Moon icon (shown in light mode) -->
-                <svg id="iconMoon" viewBox="0 0 24 24" style="display:none">
-                    <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/>
-                </svg>
-            </button>
-=======
             <!-- Mobile gear button -->
             <button class="settings-btn" id="settingsBtn" title="Settings">⚙</button>
->>>>>>> be1f4111e66d2504e87d07dac5c30a54a8b0f5dd
         </header>
 
         <!-- Mobile settings drawer (hidden by default, shown on small screens) -->
@@ -1187,6 +1167,10 @@
             <div class="drawer-models">
                 <select id="makerSelectMobile" class="model-select"></select>
                 <select id="checkerSelectMobile" class="model-select"></select>
+                <button class="theme-btn" onclick="toggleTheme()" title="Toggle appearance">
+                    <svg class="icon-sun" viewBox="0 0 24 24"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/></svg>
+                    <svg class="icon-moon" viewBox="0 0 24 24"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
+                </button>
             </div>
         </div>
 
@@ -1232,25 +1216,11 @@
         const modeToggle = document.getElementById('modeToggle');
         const labelOnPrem = document.getElementById('labelOnPrem');
         const labelOnline = document.getElementById('labelOnline');
-<<<<<<< HEAD
-        const ctxCounter = document.getElementById('ctxCounter');
-        const themeBtn = document.getElementById('themeBtn');
-        const iconSun = document.getElementById('iconSun');
-        const iconMoon = document.getElementById('iconMoon');
 
-        // ── Theme persistence ───────────────────────────────────────────
+        // ── Theme management ────────────────────────────────────────────
         function applyTheme(theme) {
             document.documentElement.setAttribute('data-theme', theme);
-            if (theme === 'light') {
-                iconSun.style.display = 'none';
-                iconMoon.style.display = 'block';
-                themeBtn.title = 'Switch to dark mode';
-            } else {
-                iconSun.style.display = 'block';
-                iconMoon.style.display = 'none';
-                themeBtn.title = 'Switch to light mode';
-            }
-            localStorage.setItem('theme', theme);
+            localStorage.setItem('mc_theme', theme);
         }
 
         function toggleTheme() {
@@ -1258,9 +1228,9 @@
             applyTheme(current === 'dark' ? 'light' : 'dark');
         }
 
-        // Apply saved or system-preferred theme on load
+        // Initialize theme
         (function initTheme() {
-            const saved = localStorage.getItem('theme');
+            const saved = localStorage.getItem('mc_theme');
             if (saved) {
                 applyTheme(saved);
             } else {
@@ -1269,8 +1239,6 @@
             }
         })();
         // ───────────────────────────────────────────────────────────────
-=======
-
         // Mobile drawer controls
         const settingsBtn = document.getElementById('settingsBtn');
         const settingsDrawer = document.getElementById('settingsDrawer');
@@ -1310,7 +1278,6 @@
         checkerSelect.addEventListener('change', () => { checkerSelectMobile.value = checkerSelect.value; });
         makerSelectMobile.addEventListener('change', () => { makerSelect.value = makerSelectMobile.value; });
         checkerSelectMobile.addEventListener('change', () => { checkerSelect.value = checkerSelectMobile.value; });
->>>>>>> be1f4111e66d2504e87d07dac5c30a54a8b0f5dd
 
         // ── Conversation history ────────────────────────────────────────
         // Accumulates {role, content} pairs across turns.
