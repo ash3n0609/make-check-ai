@@ -68,6 +68,15 @@ Your job is to:
 2. Note anything that is well-done.
 3. Give an overall verdict: PASS, PASS_WITH_NOTES, or FAIL.
 4. If FAIL or PASS_WITH_NOTES, provide a concise improved response.
+5. Ensure the DRAFT RESPONSE follows the mandatory format (Goal, Constraints, Output Format, Success Criteria, Failure Conditions). If it does not, mark as FAIL and provide a correctly formatted version in the <improved> section.
+
+The Improved Response in the <improved> tag MUST follow this format:
+Goal: ...
+Constraints: ...
+Output Format: ...
+Success Criteria: ...
+Failure Conditions: ...
+(Followed by the actual revised answer)
 
 Format your reply EXACTLY using the following XML tags:
 
@@ -85,6 +94,18 @@ Format your reply EXACTLY using the following XML tags:
 revised answer, or "N/A" if PASS
 </improved>
 """
+
+MAKER_SYSTEM = """You are a helpful and precise assistant.
+You MUST provide your response in the following structured format at the very beginning:
+
+Goal: <What the user is trying to achieve>
+Constraints: <List any restrictions, styles, or requirements>
+Output Format: <How the information is presented>
+Success Criteria: <What makes this response good>
+Failure Conditions: <What would make this response fail>
+
+After providing these fields, provide your actual answer below them."""
+
 
 
 # ═══════════════════════════════════════════════════════════
@@ -146,6 +167,11 @@ class Maker:
         from previous turns.  Each element is {"role": ..., "content": ...}.
         """
         self._last_active = time.time()  # reset idle clock
+
+        # Inject system prompt if missing
+        if not any(m.get("role") == "system" for m in messages):
+            messages = [{"role": "system", "content": MAKER_SYSTEM}] + messages
+
         result = self.pipe(
             messages,
             max_new_tokens=512,
@@ -271,7 +297,7 @@ def call_online_model(model_id: str, messages: list) -> str:
 
     payload = {
         "model": actual_model,
-        "messages": messages,
+        "messages": messages if any(m.get("role") == "system" for m in messages) else [{"role": "system", "content": MAKER_SYSTEM}] + messages,
         "max_tokens": 4096,
         "temperature": 0.7,
         "stream": False
