@@ -144,6 +144,11 @@
             position: relative;
         }
 
+        header, .feed, .input-bar {
+            padding-left: clamp(16px, 5vw, 64px) !important;
+            padding-right: clamp(16px, 5vw, 64px) !important;
+        }
+
         /* ── Sidebar ── */
         .sidebar {
             grid-row: 1 / 4;
@@ -168,9 +173,22 @@
 
         @media (max-width: 900px) {
             .app { grid-template-columns: 1fr; }
-            .sidebar { display: none; position: absolute; top: 0; left: 0; bottom: 0; width: 280px; box-shadow: 20px 0 50px rgba(0,0,0,0.5); }
-            .sidebar.open { display: flex; }
+            .sidebar { 
+                position: fixed; top: 0; left: 0; bottom: 0; 
+                width: 280px; box-shadow: 20px 0 50px rgba(0,0,0,0.5); 
+                transform: translateX(-100%);
+                transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+                display: flex !important;
+                z-index: 50; 
+            }
+            .sidebar.open { transform: translateX(0); }
             .sidebar-toggle { display: block !important; }
+            .sidebar-overlay {
+                position: fixed; top: 0; left: 0; right: 0; bottom: 0;
+                background: rgba(0,0,0,0.4); backdrop-filter: blur(2px);
+                z-index: 40; opacity: 0; pointer-events: none; transition: opacity 0.3s ease;
+            }
+            .sidebar-overlay.open { opacity: 1; pointer-events: auto; }
         }
 
         /* ── Header ── */
@@ -1147,6 +1165,7 @@
 </head>
 
 <body>
+    <div class="sidebar-overlay" id="sidebarOverlay" onclick="closeSidebar()"></div>
     <div class="app">
         <aside class="sidebar" id="sidebar">
             <div class="sidebar-header">
@@ -1286,7 +1305,17 @@
         let currentChatId = null;
         let chatHistory = [];
 
-        function toggleSidebar() { document.getElementById('sidebar').classList.toggle('open'); }
+        function closeSidebar() { 
+            document.getElementById('sidebar').classList.remove('open'); 
+            const overlay = document.getElementById('sidebarOverlay');
+            if(overlay) overlay.classList.remove('open');
+        }
+
+        function toggleSidebar() { 
+            document.getElementById('sidebar').classList.toggle('open'); 
+            const overlay = document.getElementById('sidebarOverlay');
+            if(overlay) overlay.classList.toggle('open');
+        }
 
         async function signInWithGoogle() { try { await auth.signInWithPopup(provider); } catch (e) { alert(e.message); } }
         function signOut() { auth.signOut(); newChat(); }
@@ -1314,6 +1343,7 @@
         }
 
         async function loadChat(chatId) {
+            if (window.innerWidth <= 900) closeSidebar();
             currentChatId = chatId;
             const ep = getEndpoint();
             if (!ep || !currentUser) return;
@@ -1352,6 +1382,7 @@
         }
 
         function newChat() {
+            if (window.innerWidth <= 900) closeSidebar();
             chatHistory = [];
             currentChatId = null;
             updateCtxCounter();
