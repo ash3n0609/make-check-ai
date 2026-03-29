@@ -49,8 +49,13 @@ image = (
         "protobuf",
         "fastapi[standard]",
         "requests",
+        "firebase-admin",
+        "python-dotenv",
     )
     .env({"HF_HUB_ENABLE_HF_TRANSFER": "1"})
+    .add_local_file("c:\\Users\\adwai\\projects\\make-check-ai\\firebase_config.py", remote_path="/root/firebase_config.py")
+    .add_local_file("c:\\Users\\adwai\\projects\\make-check-ai\\chat_service.py", remote_path="/root/chat_service.py")
+    .add_local_file("c:\\Users\\adwai\\projects\\make-check-ai\\serviceAccountKey.json", remote_path="/root/serviceAccountKey.json")
 )
 
 VOLUME_PATH      = "/root/.cache/huggingface"
@@ -359,7 +364,11 @@ fastapi_app.add_middleware(
 def fastapi_wrapper():
     return fastapi_app
 
-@app.function(image=image, secrets=[modal.Secret.from_dotenv()], timeout=1200)
+@app.function(
+    image=image, 
+    secrets=[modal.Secret.from_dotenv()], 
+    timeout=1200
+)
 @modal.fastapi_endpoint(method="POST", label="maker-checker")
 async def web_check(body: dict):
     """
@@ -405,6 +414,23 @@ async def web_check(body: dict):
         # (works for both on-prem models like Qwen3 and online models like Gemini)
         draft = strip_think(draft)
 
+        user_id = body.get("user_id")
+        chat_id = body.get("chat_id")
+        if user_id and chat_id:
+            try:
+                from chat_service import save_message, save_chat_title
+                # Save user prompt (if not already saved)
+                # For simplicity, we save it here, but ideally we save it when it arrives
+                # But we don't want to block the start of generation.
+                # Since we are in a generator, it's fine.
+                save_message(user_id, chat_id, "user", prompt)
+                
+                # If this is the first message, maybe set a title
+                # We can use the first 40 chars of the prompt as title
+                save_chat_title(user_id, chat_id, prompt[:40] + "...")
+            except Exception as e:
+                print(f"Error saving user message: {e}")
+
         yield f"data: {json.dumps({'step': 'maker', 'draft': draft, 'model': maker_model_id})}\n\n"
 
         # ── CHECKER ────────────────────────────────────────────────
@@ -424,9 +450,42 @@ async def web_check(body: dict):
             review = await checker.review.remote.aio(prompt, draft)
 
         parsed = parse_checker_output(review)
+        
+        if user_id and chat_id:
+            try:
+                from chat_service import save_message
+                save_message(user_id, chat_id, "assistant", draft, metadata=parsed)
+            except Exception as e:
+                print(f"Error saving assistant message: {e}")
+
         yield f"data: {json.dumps({'step': 'checker', 'review': parsed, 'model': checker_model_id})}\n\n"
 
     return StreamingResponse(generate(), media_type="text/event-stream")
+
+@app.function(
+    image=image, 
+    secrets=[modal.Secret.from_dotenv()]
+)
+@modal.fastapi_endpoint(method="POST", label="get-user-chats")
+async def get_chats(body: dict):
+    from chat_service import get_user_chats
+    user_id = body.get("user_id")
+    if not user_id:
+        return {"error": "User ID required"}
+    return get_user_chats(user_id)
+
+@app.function(
+    image=image, 
+    secrets=[modal.Secret.from_dotenv()]
+)
+@modal.fastapi_endpoint(method="POST", label="get-chat-history")
+async def get_history(body: dict):
+    from chat_service import get_chat_history
+    user_id = body.get("user_id")
+    chat_id = body.get("chat_id")
+    if not user_id or not chat_id:
+        return {"error": "User ID and Chat ID required"}
+    return get_chat_history(user_id, chat_id)
 
 
 # ═══════════════════════════════════════════════════════════

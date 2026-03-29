@@ -14,6 +14,16 @@
     <!-- Syntax highlighting (official CDN assets — registers hljs globally) -->
     <link rel="stylesheet" href="https://unpkg.com/@highlightjs/cdn-assets@11.9.0/styles/github-dark.min.css">
     <script src="https://unpkg.com/@highlightjs/cdn-assets@11.9.0/highlight.min.js"></script>
+    
+    <!-- Firebase SDKs -->
+    <script src="https://www.gstatic.com/firebasejs/10.8.1/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.8.1/firebase-auth-compat.js"></script>
+
+    
+    <!-- Firebase SDKs -->
+    <script src="https://www.gstatic.com/firebasejs/10.8.1/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.8.1/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore-compat.js"></script>
     <style>
         /* ── Reset & base ── */
         *,
@@ -115,13 +125,41 @@
         /* ── Layout ── */
         .app {
             display: grid;
+            grid-template-columns: 260px 1fr;
             grid-template-rows: 56px 1fr auto;
             height: 100vh;
-            max-width: 860px;
+            max-width: 1400px;
             margin: 0 auto;
-            padding: 0 16px;
             position: relative;
-            /* anchor for settings drawer */
+        }
+
+        /* ── Sidebar ── */
+        .sidebar {
+            grid-row: 1 / 4;
+            background: var(--surface);
+            border-right: 1px solid var(--border);
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+            z-index: 20;
+        }
+
+        .sidebar-header { padding: 16px; border-bottom: 1px solid var(--border); display: flex; justify-content: space-between; align-items: center; }
+        .sidebar-content { flex: 1; overflow-y: auto; padding: 12px; display: flex; flex-direction: column; gap: 4px; }
+        .chat-item { padding: 10px 12px; border-radius: 8px; cursor: pointer; font-size: 13px; color: var(--muted); border: 1px solid transparent; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+        .chat-item:hover { background: var(--surface2); color: var(--text); }
+        .chat-item.active { background: var(--surface2); color: var(--text); border-color: var(--accent); }
+        .sidebar-footer { padding: 16px; border-top: 1px solid var(--border); }
+        .user-profile { display: flex; align-items: center; gap: 10px; font-size: 13px; }
+        .user-avatar { width: 32px; height: 32px; border-radius: 50%; object-fit: cover; }
+        .login-btn { width: 100%; background: var(--accent); color: white; border: none; padding: 8px; border-radius: 6px; font-family: var(--mono); font-size: 12px; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 8px; }
+        .sidebar-toggle { display: none; background: none; border: 1px solid var(--border); color: var(--muted); padding: 6px; border-radius: 4px; cursor: pointer; margin-right: 8px; }
+
+        @media (max-width: 900px) {
+            .app { grid-template-columns: 1fr; }
+            .sidebar { display: none; position: absolute; top: 0; left: 0; bottom: 0; width: 280px; box-shadow: 20px 0 50px rgba(0,0,0,0.5); }
+            .sidebar.open { display: flex; }
+            .sidebar-toggle { display: block !important; }
         }
 
         /* ── Header ── */
@@ -461,12 +499,6 @@
 
             .header-controls {
                 display: none;
-            }
-        }
-
-        @media (max-width: 700px) {
-            .app {
-                padding: 0 12px;
             }
         }
 
@@ -1105,7 +1137,21 @@
 
 <body>
     <div class="app">
+        <aside class="sidebar" id="sidebar">
+            <div class="sidebar-header">
+                <div class="logo"><div class="logo-dot"></div><span class="logo-title" style="font-size:12px;">history</span></div>
+                <button class="new-chat-btn" onclick="newChat()">✦ new</button>
+            </div>
+            <div class="sidebar-content" id="chatHistoryList">
+                <div style="padding: 20px; text-align: center; color: var(--muted); font-size: 12px;">Sign in to see your chat history</div>
+            </div>
+            <div class="sidebar-footer" id="sidebarFooter">
+                <button class="login-btn" onclick="signInWithGoogle()">Sign in with Google</button>
+            </div>
+        </aside>
+
         <header>
+            <button class="sidebar-toggle" onclick="toggleSidebar()">☰</button>
             <div class="logo">
                 <div class="logo-dot"></div>
                 <span class="logo-title">maker</span>
@@ -1208,81 +1254,85 @@
         const input = document.getElementById('promptInput');
         const sendBtn = document.getElementById('sendBtn');
         const ctxCounter = document.getElementById('ctxCounter');
+        const chatHistoryList = document.getElementById('chatHistoryList');
+        const sidebarFooter = document.getElementById('sidebarFooter');
 
-        // Desktop controls
-        const epInput = document.getElementById('endpointInput');
-        const makerSelect = document.getElementById('makerSelect');
-        const checkerSelect = document.getElementById('checkerSelect');
-        const modeToggle = document.getElementById('modeToggle');
-        const labelOnPrem = document.getElementById('labelOnPrem');
-        const labelOnline = document.getElementById('labelOnline');
+        // Firebase Configuration
+        const firebaseConfig = {
+            apiKey: "AIzaSyD5TOM0lSLgLJpx05m6bjLzq-RvcSPXAwA",
+            authDomain: "make-check-ai-54813.firebaseapp.com",
+            projectId: "make-check-ai-54813",
+            storageBucket: "make-check-ai-54813.firebasestorage.app",
+            messagingSenderId: "207825956006",
+            appId: "1:207825956006:web:b5d7b563d14562eac31867",
+            measurementId: "G-VQ2KLH0DPL"
+        };
+        firebase.initializeApp(firebaseConfig);
+        const auth = firebase.auth();
+        const provider = new firebase.auth.GoogleAuthProvider();
 
-        // ── Theme management ────────────────────────────────────────────
-        function applyTheme(theme) {
-            document.documentElement.setAttribute('data-theme', theme);
-            localStorage.setItem('mc_theme', theme);
-        }
-
-        function toggleTheme() {
-            const current = document.documentElement.getAttribute('data-theme') || 'dark';
-            applyTheme(current === 'dark' ? 'light' : 'dark');
-        }
-
-        // Initialize theme
-        (function initTheme() {
-            const saved = localStorage.getItem('mc_theme');
-            if (saved) {
-                applyTheme(saved);
-            } else {
-                const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
-                applyTheme(prefersDark ? 'dark' : 'light');
-            }
-        })();
-        // ───────────────────────────────────────────────────────────────
-        // Mobile drawer controls
-        const settingsBtn = document.getElementById('settingsBtn');
-        const settingsDrawer = document.getElementById('settingsDrawer');
-        const epInputMobile = document.getElementById('endpointInputMobile');
-        const makerSelectMobile = document.getElementById('makerSelectMobile');
-        const checkerSelectMobile = document.getElementById('checkerSelectMobile');
-        const modeToggleMobile = document.getElementById('modeToggleMobile');
-        const labelOnPremMobile = document.getElementById('labelOnPremMobile');
-        const labelOnlineMobile = document.getElementById('labelOnlineMobile');
-
-        // ── Settings drawer toggle ──────────────────────────────────────
-        settingsBtn.addEventListener('click', (e) => {
-            e.stopPropagation();
-            const open = settingsDrawer.classList.toggle('open');
-            settingsBtn.classList.toggle('open', open);
-        });
-        // Close drawer when tapping outside
-        document.addEventListener('click', (e) => {
-            if (!settingsDrawer.contains(e.target) && e.target !== settingsBtn) {
-                settingsDrawer.classList.remove('open');
-                settingsBtn.classList.remove('open');
-            }
-        });
-
-        // ── Endpoint sync (desktop ↔ mobile) ───────────────────────────
-        epInput.addEventListener('input', () => {
-            epInputMobile.value = epInput.value;
-            localStorage.setItem('mc_endpoint', epInput.value.trim());
-        });
-        epInputMobile.addEventListener('input', () => {
-            epInput.value = epInputMobile.value;
-            localStorage.setItem('mc_endpoint', epInputMobile.value.trim());
-        });
-
-        // ── Model select sync ───────────────────────────────────────────
-        makerSelect.addEventListener('change', () => { makerSelectMobile.value = makerSelect.value; });
-        checkerSelect.addEventListener('change', () => { checkerSelectMobile.value = checkerSelect.value; });
-        makerSelectMobile.addEventListener('change', () => { makerSelect.value = makerSelectMobile.value; });
-        checkerSelectMobile.addEventListener('change', () => { checkerSelect.value = checkerSelectMobile.value; });
-
-        // ── Conversation history ────────────────────────────────────────
-        // Accumulates {role, content} pairs across turns.
-        // Sent to the backend on every request so the Maker has full context.
+        let currentUser = null;
+        let currentChatId = null;
         let chatHistory = [];
+
+        function toggleSidebar() { document.getElementById('sidebar').classList.toggle('open'); }
+
+        async function signInWithGoogle() { try { await auth.signInWithPopup(provider); } catch (e) { alert(e.message); } }
+        function signOut() { auth.signOut(); newChat(); }
+
+        auth.onAuthStateChanged(user => {
+            currentUser = user;
+            if (user) {
+                sidebarFooter.innerHTML = `<div class="user-profile"><img src="${user.photoURL}" class="user-avatar" alt="Avatar"><div style="flex:1; overflow:hidden; text-overflow:ellipsis;">${user.displayName}</div><button onclick="signOut()" style="background:none; border:none; color:var(--fail); cursor:pointer;">Logout</button></div>`;
+                loadUserChats();
+            } else {
+                sidebarFooter.innerHTML = `<button class="login-btn" onclick="signInWithGoogle()">Sign in with Google</button>`;
+                chatHistoryList.innerHTML = `<div style="padding:20px; text-align:center; color:var(--muted); font-size:12px;">Sign in to see history</div>`;
+            }
+        });
+
+        async function loadUserChats() {
+            if (!currentUser) return;
+            const ep = getEndpoint();
+            if (!ep) return;
+            try {
+                const res = await fetch(ep.replace('maker-checker', 'get-user-chats'), { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({user_id: currentUser.uid}) });
+                const chats = await res.json();
+                chatHistoryList.innerHTML = chats.map(c => `<div class="chat-item ${currentChatId===c.id?'active':''}" onclick="loadChat('${c.id}')">${escHtml(c.title || 'Untitled')}</div>`).join('');
+            } catch(e) { console.error(e); }
+        }
+
+        async function loadChat(chatId) {
+            currentChatId = chatId;
+            const ep = getEndpoint();
+            if (!ep || !currentUser) return;
+            feed.innerHTML = '';
+            chatHistory = [];
+            document.querySelectorAll('.chat-item').forEach(el=>el.classList.remove('active'));
+            setTimeout(() => { const active = [...document.querySelectorAll('.chat-item')].find(el => el.onclick.toString().includes(chatId)); if(active) active.classList.add('active'); }, 100);
+
+            try {
+                const res = await fetch(ep.replace('maker-checker', 'get-chat-history'), { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({user_id: currentUser.uid, chat_id: chatId}) });
+                const messages = await res.json();
+                messages.forEach(msg => {
+                    if (msg.role === 'user') {
+                        appendUserBubble(msg.text);
+                        chatHistory.push({role: 'user', content: msg.text});
+                    } else if (msg.role === 'assistant') {
+                        const div = document.createElement('div');
+                        div.className = 'turn';
+                        feed.appendChild(div);
+                        if(msg.metadata && msg.metadata.verdict) {
+                             renderResult(div, { maker: msg.text, checker: msg.metadata, makerModelId: 'History', checkerModelId: 'History' });
+                        } else {
+                             div.innerHTML = `<div class="card maker"><div class="card-head"><div class="dot"></div><span class="label">MAKER</span><span class="model">History</span></div><div class="card-body md-body">${renderMd(msg.text)}</div></div>`;
+                        }
+                        chatHistory.push({role: 'assistant', content: msg.text});
+                    }
+                });
+                updateCtxCounter();
+            } catch(e) { console.error(e); }
+        }
 
         function updateCtxCounter() {
             const turns = Math.floor(chatHistory.length / 2);
@@ -1292,273 +1342,80 @@
 
         function newChat() {
             chatHistory = [];
+            currentChatId = null;
             updateCtxCounter();
-            // Clear the feed and restore the empty state
+            document.querySelectorAll('.chat-item').forEach(el=>el.classList.remove('active'));
             feed.innerHTML = '';
             const fresh = document.createElement('div');
             fresh.className = 'empty';
             fresh.id = 'emptyState';
-            fresh.innerHTML = `
-                <div class="empty-title">// ask anything</div>
-                <div style="font-size:13px;color:var(--muted);margin-top:-4px">OLMo-2 drafts · Qwen3 critiques</div>
-                <div class="empty-grid">
-                    <div class="empty-chip" onclick="usePrompt(this)">What caused the fall of the Roman Empire?</div>
-                    <div class="empty-chip" onclick="usePrompt(this)">Explain backpropagation in two sentences</div>
-                    <div class="empty-chip" onclick="usePrompt(this)">What is the capital of Australia and why isn't it Sydney?</div>
-                    <div class="empty-chip" onclick="usePrompt(this)">Is Pluto a planet? Give the current scientific consensus</div>
-                </div>`;
+            fresh.innerHTML = `<div class="empty-title">// ask anything</div><div style="font-size:13px;color:var(--muted);margin-top:-4px">OLMo-2 drafts · Qwen3 critiques</div><div class="empty-grid"><div class="empty-chip" onclick="usePrompt(this)">What caused the fall of the Roman Empire?</div><div class="empty-chip" onclick="usePrompt(this)">Explain backpropagation in two sentences</div><div class="empty-chip" onclick="usePrompt(this)">What is the capital of Australia and why isn't it Sydney?</div><div class="empty-chip" onclick="usePrompt(this)">Is Pluto a planet? Give the current scientific consensus</div></div>`;
             feed.appendChild(fresh);
             emptyState = fresh;
         }
-        // ───────────────────────────────────────────────────────────────
 
-        // Configs for mode toggle
+        // Theme management
+        function applyTheme(theme) { document.documentElement.setAttribute('data-theme', theme); localStorage.setItem('mc_theme', theme); }
+        function toggleTheme() { const current = document.documentElement.getAttribute('data-theme') || 'dark'; applyTheme(current === 'dark' ? 'light' : 'dark'); }
+        (function initTheme() { const saved = localStorage.getItem('mc_theme'); if (saved) applyTheme(saved); else applyTheme(window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light'); })();
+
+        // Settings drawer
+        const settingsBtn = document.getElementById('settingsBtn');
+        const settingsDrawer = document.getElementById('settingsDrawer');
+        settingsBtn.addEventListener('click', (e) => { e.stopPropagation(); const open = settingsDrawer.classList.toggle('open'); settingsBtn.classList.toggle('open', open); });
+        document.addEventListener('click', (e) => { if (!settingsDrawer.contains(e.target) && e.target !== settingsBtn) { settingsDrawer.classList.remove('open'); settingsBtn.classList.remove('open'); } });
+
+        // Sync inputs
+        const epInput = document.getElementById('endpointInput');
+        const epInputMobile = document.getElementById('endpointInputMobile');
+        epInput.addEventListener('input', () => { epInputMobile.value = epInput.value; localStorage.setItem('mc_endpoint', epInput.value.trim()); });
+        epInputMobile.addEventListener('input', () => { epInput.value = epInputMobile.value; localStorage.setItem('mc_endpoint', epInputMobile.value.trim()); });
+
+        // Models
+        const makerSelect = document.getElementById('makerSelect');
+        const checkerSelect = document.getElementById('checkerSelect');
+        const makerSelectMobile = document.getElementById('makerSelectMobile');
+        const checkerSelectMobile = document.getElementById('checkerSelectMobile');
+        makerSelect.addEventListener('change', () => { makerSelectMobile.value = makerSelect.value; });
+        checkerSelect.addEventListener('change', () => { checkerSelectMobile.value = checkerSelect.value; });
+        makerSelectMobile.addEventListener('change', () => { makerSelect.value = makerSelectMobile.value; });
+        checkerSelectMobile.addEventListener('change', () => { checkerSelect.value = checkerSelectMobile.value; });
+
         let isOnlineMode = false;
+        const onPremMakers = [{ val: "allenai/OLMo-2-1124-7B-Instruct", text: "OLMo-2 7B" }, { val: "meta-llama/Llama-3.2-3B-Instruct", text: "Llama 3.2 3B" }, { val: "Qwen/Qwen2.5-7B-Instruct", text: "Qwen 2.5 7B" }];
+        const onPremCheckers = [{ val: "Qwen/Qwen3-4B", text: "Qwen 3 4B" }, { val: "HuggingFaceTB/SmolLM2-1.7B-Instruct", text: "SmolLM2 1.7B" }, { val: "meta-llama/Llama-3.2-1B-Instruct", text: "Llama 3.2 1B" }];
+        const onlineMakers = [{ val: "online/gemini-3.1-flash-lite-preview", text: "Gemini 3.1 Flash-Lite" }, { val: "online/gemini-3.1-flash-image-preview", text: "Gemini 3.1 Flash" }, { val: "online/gemini-3-pro-image-preview", text: "Gemini 3.0 Pro" }, { val: "online/kimi-k2.5", text: "Moonshot Kimi" }];
+        const onlineCheckers = [{ val: "online/gemini-3.1-flash-lite-preview", text: "Gemini 3.1 Flash-Lite" }, { val: "online/gemini-3.1-flash-image-preview", text: "Gemini 3.1 Flash" }, { val: "online/gemini-3-pro-image-preview", text: "Gemini 3.0 Pro" }, { val: "online/kimi-k2.5", text: "Moonshot Kimi" }];
 
-        const onPremMakers = [
-            { val: "allenai/OLMo-2-1124-7B-Instruct", text: "OLMo-2 7B" },
-            { val: "meta-llama/Llama-3.2-3B-Instruct", text: "Llama 3.2 3B" },
-            { val: "Qwen/Qwen2.5-7B-Instruct", text: "Qwen 2.5 7B" }
-        ];
-
-        const onPremCheckers = [
-            { val: "Qwen/Qwen3-4B", text: "Qwen 3 4B" },
-            { val: "HuggingFaceTB/SmolLM2-1.7B-Instruct", text: "SmolLM2 1.7B" },
-            { val: "meta-llama/Llama-3.2-1B-Instruct", text: "Llama 3.2 1B" }
-        ];
-
-        const onlineMakers = [
-            { val: "online/gemini-3.1-flash-lite-preview", text: "Gemini 3.1 Flash-Lite" },
-            { val: "online/gemini-3.1-flash-image-preview", text: "Gemini 3.1 Flash" },
-            { val: "online/gemini-3-pro-image-preview", text: "Gemini 3.0 Pro" },
-            { val: "online/kimi-k2.5", text: "Moonshot Kimi" }
-        ];
-
-        const onlineCheckers = [
-            { val: "online/gemini-3.1-flash-lite-preview", text: "Gemini 3.1 Flash-Lite" },
-            { val: "online/gemini-3.1-flash-image-preview", text: "Gemini 3.1 Flash" },
-            { val: "online/gemini-3-pro-image-preview", text: "Gemini 3.0 Pro" },
-            { val: "online/kimi-k2.5", text: "Moonshot Kimi" }
-        ];
-
-        function populateSelect(selectElem, options) {
-            selectElem.innerHTML = '';
-            options.forEach(opt => {
-                const el = document.createElement('option');
-                el.value = opt.val;
-                el.textContent = opt.text;
-                selectElem.appendChild(el);
-            });
-        }
-
-        function updateModelOptions() {
-            const makers = isOnlineMode ? onlineMakers : onPremMakers;
-            const checkers = isOnlineMode ? onlineCheckers : onPremCheckers;
-            populateSelect(makerSelect, makers);
-            populateSelect(checkerSelect, checkers);
-            populateSelect(makerSelectMobile, makers);
-            populateSelect(checkerSelectMobile, checkers);
-        }
-
-        function toggleMode() {
-            setMode(isOnlineMode ? 'onprem' : 'online');
-        }
-
-        function setMode(mode) {
-            isOnlineMode = mode === 'online';
-            // Desktop toggle
-            modeToggle.classList.toggle('online', isOnlineMode);
-            labelOnline.classList.toggle('active', isOnlineMode);
-            labelOnPrem.classList.toggle('active', !isOnlineMode);
-            // Mobile toggle (keep in sync)
-            modeToggleMobile.classList.toggle('online', isOnlineMode);
-            labelOnlineMobile.classList.toggle('active', isOnlineMode);
-            labelOnPremMobile.classList.toggle('active', !isOnlineMode);
-            updateModelOptions();
-        }
-
-        // Initialize default UI state
+        function populateSelect(selectElem, options) { selectElem.innerHTML = ''; options.forEach(opt => { const el = document.createElement('option'); el.value = opt.val; el.textContent = opt.text; selectElem.appendChild(el); }); }
+        function updateModelOptions() { const makers = isOnlineMode ? onlineMakers : onPremMakers; const checkers = isOnlineMode ? onlineCheckers : onPremCheckers; populateSelect(makerSelect, makers); populateSelect(checkerSelect, checkers); populateSelect(makerSelectMobile, makers); populateSelect(checkerSelectMobile, checkers); }
+        function toggleMode() { setMode(isOnlineMode ? 'onprem' : 'online'); }
+        function setMode(mode) { isOnlineMode = mode === 'online'; document.getElementById('modeToggle').classList.toggle('online', isOnlineMode); document.getElementById('labelOnline').classList.toggle('active', isOnlineMode); document.getElementById('labelOnPrem').classList.toggle('active', !isOnlineMode); document.getElementById('modeToggleMobile').classList.toggle('online', isOnlineMode); document.getElementById('labelOnlineMobile').classList.toggle('active', isOnlineMode); document.getElementById('labelOnPremMobile').classList.toggle('active', !isOnlineMode); updateModelOptions(); }
         updateModelOptions();
 
-        // Hardcode your permanent modal deploy URL here
         const MY_PERMANENT_URL = "https://adwaithshenoi--maker-checker.modal.run";
-        epInput.value = MY_PERMANENT_URL;
-        epInput.disabled = true;
-        // Keep mobile input in sync
-        epInputMobile.value = MY_PERMANENT_URL;
-        epInputMobile.disabled = true;
+        epInput.value = MY_PERMANENT_URL; epInput.disabled = true; epInputMobile.value = MY_PERMANENT_URL; epInputMobile.disabled = true;
 
-        function usePrompt(el) {
-            input.value = el.textContent;
-            autoResize(input);
-            input.focus();
-        }
-
-        function autoResize(el) {
-            el.style.height = 'auto';
-            el.style.height = Math.min(el.scrollHeight, 120) + 'px';
-        }
-
-        function handleKey(e) {
-            if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendPrompt(); }
-        }
-
-        function getEndpoint() {
-            const raw = epInput.value.trim() || epInputMobile.value.trim();
-            return raw || null;
-        }
-
-        function appendUserBubble(text) {
-            const el = document.createElement('div');
-            el.className = 'turn';
-            el.innerHTML = `<div class="user-bubble">${escHtml(text)}</div>`;
-            feed.appendChild(el);
-            return el;
-        }
-
-        function appendSkeleton() {
-            const makerName = makerSelect.options[makerSelect.selectedIndex].text;
-            const el = document.createElement('div');
-            el.className = 'turn';
-            el.innerHTML = `
-    <div class="status-row"><div class="spinner"></div><span>${makerName} drafting…</span></div>
-    <div class="skeleton-cards">
-      <div class="skeleton-card">
-        <div class="skel skel-head"></div>
-        <div class="skel skel-line w90"></div>
-        <div class="skel skel-line w80"></div>
-        <div class="skel skel-line w65"></div>
-        <div class="skel skel-line w80"></div>
-      </div>
-      <div class="skeleton-card">
-        <div class="skel skel-head"></div>
-        <div class="skel skel-line w80"></div>
-        <div class="skel skel-line w50"></div>
-        <div class="skel skel-line w90"></div>
-        <div class="skel skel-line w65"></div>
-      </div>
-    </div>`;
-            feed.appendChild(el);
-            feed.scrollTop = feed.scrollHeight;
-            return el;
-        }
-
-        function verdictClass(v) {
-            if (!v) return 'pass';
-            const u = v.toUpperCase();
-            if (u.includes('FAIL')) return 'fail';
-            if (u.includes('NOTE')) return 'notes';
-            return 'pass';
-        }
-
-        function renderBullets(text) {
-            if (!text || text.toLowerCase() === 'none' || text.toLowerCase() === 'n/a') return '<span style="color:var(--muted)">—</span>';
-            return '<ul>' + text.split('\n').filter(l => l.trim()).map(l => `<li>${escHtml(l.replace(/^[-•*]\s*/, ''))}</li>`).join('') + '</ul>';
-        }
-
-        function renderResult(turn, data) {
-            const { maker, checker, makerModelId, checkerModelId } = data;
-            const vc = verdictClass(checker.verdict);
-
-            // Make the names look pretty based on value (fallback to id if custom)
-            const getModelName = (selectElem, id) => {
-                const opt = Array.from(selectElem.options).find(o => o.value === id);
-                return opt ? opt.text : id.split('/').pop();
-            };
-            const makerName = getModelName(makerSelect, makerModelId);
-            const checkerName = getModelName(checkerSelect, checkerModelId);
-
-            const improved = checker.improved && checker.improved.toLowerCase() !== 'n/a'
-                ? `<div class="checker-section"><div class="checker-label">improved response</div><div class="improved-box md-body">${renderMd(checker.improved)}</div></div>`
-                : '';
-
-            const thinkHtml = checker.think
-                ? `<details class="think-section">
-                     <summary>Chain of Thought</summary>
-                     <div class="think-content md-body">${renderMd(checker.think)}</div>
-                   </details>`
-                : '';
-
-            turn.innerHTML = `
-    <div class="cards">
-      <div class="card maker">
-        <div class="card-head">
-          <div class="dot"></div>
-          <span class="label">MAKER</span>
-          <span class="model">${makerName}</span>
-        </div>
-        <div class="card-body md-body">${renderMd(maker)}</div>
-      </div>
-      <div class="card checker">
-        <div class="card-head">
-          <div class="dot"></div>
-          <span class="label">CHECKER</span>
-          <span class="model">${checkerName}</span>
-        </div>
-        <div class="card-body">
-          ${thinkHtml}
-          <div class="verdict ${vc}">${checker.verdict || 'PASS'}</div>
-          <div class="checker-section">
-            <div class="checker-label">issues</div>
-            <div class="checker-content">${renderBullets(checker.issues)}</div>
-          </div>
-          <div class="checker-section">
-            <div class="checker-label">strengths</div>
-            <div class="checker-content">${renderBullets(checker.strengths)}</div>
-          </div>
-          ${improved}
-        </div>
-      </div>
-    </div>`;
-            turn.style.animation = 'fadeUp .3s ease both';
-            feed.scrollTop = feed.scrollHeight;
-        }
-
-        function renderMaker(turn, makerText, makerModelId, checkerModelId) {
-            const getModelName = (selectElem, id) => {
-                const opt = Array.from(selectElem.options).find(o => o.value === id);
-                return opt ? opt.text : id.split('/').pop();
-            };
-            const makerName = getModelName(makerSelect, makerModelId);
-            const checkerName = getModelName(checkerSelect, checkerModelId || checkerSelect.value);
-
-            turn.innerHTML = `
-    <div class="cards">
-      <div class="card maker">
-        <div class="card-head">
-          <div class="dot"></div>
-          <span class="label">MAKER</span>
-          <span class="model">${makerName}</span>
-        </div>
-        <div class="card-body md-body">${renderMd(makerText)}</div>
-      </div>
-      <div class="card checker">
-        <div class="card-head">
-          <div class="dot"></div>
-          <span class="label">CHECKER</span>
-          <span class="model">${checkerName}</span>
-        </div>
-        <div class="card-body" style="padding: 24px;">
-            <div class="status-row"><div class="spinner"></div><span>${checkerName} reviewing…</span></div>
-        </div>
-      </div>
-    </div>`;
-            feed.scrollTop = feed.scrollHeight;
-        }
+        function usePrompt(el) { input.value = el.textContent; autoResize(input); input.focus(); }
+        function autoResize(el) { el.style.height = 'auto'; el.style.height = Math.min(el.scrollHeight, 120) + 'px'; }
+        function handleKey(e) { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendPrompt(); } }
+        function getEndpoint() { return (epInput.value.trim() || epInputMobile.value.trim()) || null; }
+        function appendUserBubble(text) { const el = document.createElement('div'); el.className = 'turn'; el.innerHTML = `<div class="user-bubble">${escHtml(text)}</div>`; feed.appendChild(el); return el; }
+        function appendSkeleton() { const makerName = makerSelect.options[makerSelect.selectedIndex].text; const el = document.createElement('div'); el.className = 'turn'; el.innerHTML = `<div class="status-row"><div class="spinner"></div><span>${makerName} drafting…</span></div><div class="skeleton-cards"><div class="skeleton-card"><div class="skel skel-head"></div><div class="skel skel-line w90"></div><div class="skel skel-line w80"></div><div class="skel skel-line w65"></div><div class="skel skel-line w80"></div></div><div class="skeleton-card"><div class="skel skel-head"></div><div class="skel skel-line w80"></div><div class="skel skel-line w50"></div><div class="skel skel-line w90"></div><div class="skel skel-line w65"></div></div></div>`; feed.appendChild(el); feed.scrollTop = feed.scrollHeight; return el; }
+        function verdictClass(v) { if (!v) return 'pass'; const u = v.toUpperCase(); if (u.includes('FAIL')) return 'fail'; if (u.includes('NOTE')) return 'notes'; return 'pass'; }
+        function renderBullets(text) { if (!text || text.toLowerCase() === 'none' || text.toLowerCase() === 'n/a') return '<span style="color:var(--muted)">—</span>'; return '<ul>' + text.split('\n').filter(l => l.trim()).map(l => `<li>${escHtml(l.replace(/^[-•*]\s*/, ''))}</li>`).join('') + '</ul>'; }
+        function renderResult(turn, data) { const { maker, checker, makerModelId, checkerModelId } = data; const vc = verdictClass(checker.verdict); const getModelName = (selectElem, id) => { const opt = Array.from(selectElem.options).find(o => o.value === id); return opt ? opt.text : id.split('/').pop(); }; const makerName = getModelName(makerSelect, makerModelId); const checkerName = getModelName(checkerSelect, checkerModelId); const improved = checker.improved && checker.improved.toLowerCase() !== 'n/a' ? `<div class="checker-section"><div class="checker-label">improved response</div><div class="improved-box md-body">${renderMd(checker.improved)}</div></div>` : ''; const thinkHtml = checker.think ? `<details class="think-section"><summary>Chain of Thought</summary><div class="think-content md-body">${renderMd(checker.think)}</div></details>` : ''; turn.innerHTML = `<div class="cards"><div class="card maker"><div class="card-head"><div class="dot"></div><span class="label">MAKER</span><span class="model">${makerName}</span></div><div class="card-body md-body">${renderMd(maker)}</div></div><div class="card checker"><div class="card-head"><div class="dot"></div><span class="label">CHECKER</span><span class="model">${checkerName}</span></div><div class="card-body">${thinkHtml}<div class="verdict ${vc}">${checker.verdict || 'PASS'}</div><div class="checker-section"><div class="checker-label">issues</div><div class="checker-content">${renderBullets(checker.issues)}</div></div><div class="checker-section"><div class="checker-label">strengths</div><div class="checker-content">${renderBullets(checker.strengths)}</div></div>${improved}</div></div></div>`; turn.style.animation = 'fadeUp .3s ease both'; feed.scrollTop = feed.scrollHeight; }
+        function renderMaker(turn, makerText, makerModelId, checkerModelId) { const getModelName = (selectElem, id) => { const opt = Array.from(selectElem.options).find(o => o.value === id); return opt ? opt.text : id.split('/').pop(); }; const makerName = getModelName(makerSelect, makerModelId); const checkerName = getModelName(checkerSelect, checkerModelId || checkerSelect.value); turn.innerHTML = `<div class="cards"><div class="card maker"><div class="card-head"><div class="dot"></div><span class="label">MAKER</span><span class="model">${makerName}</span></div><div class="card-body md-body">${renderMd(makerText)}</div></div><div class="card checker"><div class="card-head"><div class="dot"></div><span class="label">CHECKER</span><span class="model">${checkerName}</span></div><div class="card-body" style="padding: 24px;"><div class="status-row"><div class="spinner"></div><span>${checkerName} reviewing…</span></div></div></div></div>`; feed.scrollTop = feed.scrollHeight; }
 
         async function sendPrompt() {
             const prompt = input.value.trim();
             if (!prompt) return;
             const endpoint = getEndpoint();
             if (!endpoint) { alert('Paste your Modal endpoint URL in the header first.'); return; }
-
             const makerModel = makerSelect.value;
             const checkerModel = checkerSelect.value;
-
-            // ── Push the new user turn into history BEFORE sending ──────
             chatHistory.push({ role: 'user', content: prompt });
             updateCtxCounter();
-
             if (emptyState && emptyState.parentNode) emptyState.remove();
             input.value = '';
             autoResize(input);
@@ -1577,7 +1434,9 @@
                     body: JSON.stringify({
                         messages: chatHistory,
                         maker: makerModel,
-                        checker: checkerModel
+                        checker: checkerModel,
+                        user_id: currentUser ? currentUser.uid : null,
+                        chat_id: currentChatId || (currentChatId = 'chat_' + Date.now())
                     }),
                 });
                 if (!res.ok) throw new Error(`HTTP ${res.status}`);
@@ -1626,6 +1485,7 @@
                     chatHistory.push({ role: 'assistant', content: makerDraft });
                     updateCtxCounter();
                 }
+                if(currentUser && chatHistory.length <= 2) { loadUserChats(); }
             } catch (err) {
                 // On error, pop the user message we optimistically pushed
                 chatHistory.pop();
