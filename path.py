@@ -127,6 +127,7 @@ class Maker:
     @modal.enter()
     def load(self):
         """Called ONCE when the container starts. Weights stay in VRAM."""
+        t0 = time.time()
         from transformers import pipeline
         print(f"[Maker] Loading {MAKER_MODEL_ID} into GPU memory...")
         self.pipe = pipeline(
@@ -136,26 +137,37 @@ class Maker:
             model_kwargs={"dtype": "auto"},
         )
         self._last_active = time.time()
+        self.load_time = time.time() - t0
         _start_idle_countdown("Maker", SCALEDOWN_SECONDS, lambda: self._last_active)
         print(f"[Maker] Ready. Will stay warm for {SCALEDOWN_SECONDS}s after last request.")
 
     @modal.method()
-    def generate(self, messages: list) -> str:
+    def generate(self, messages: list) -> dict:
         """
         Accept the full conversation history so the model has context
         from previous turns.  Each element is {"role": ..., "content": ...}.
         """
         self._last_active = time.time()  # reset idle clock
+        t0 = time.time()
         result = self.pipe(
             messages,
             max_new_tokens=512,
             do_sample=True,
             temperature=0.7,
         )
+        inf_time = time.time() - t0
         self._last_active = time.time()  # reset again after inference
         draft = result[0]["generated_text"][-1]["content"]
         print(f"[Maker] Draft ({len(draft)} chars):\n{draft}\n")
-        return draft
+        
+        load_time = getattr(self, "load_time", 0.0)
+        self.load_time = 0.0
+        
+        return {
+            "draft": draft,
+            "load_time": load_time,
+            "inference_time": inf_time
+        }
 
 
 # ═══════════════════════════════════════════════════════════
@@ -176,6 +188,7 @@ class Checker:
     @modal.enter()
     def load(self):
         """Called ONCE when the container starts. Weights stay in VRAM."""
+        t0 = time.time()
         from transformers import pipeline
         print(f"[Checker] Loading {CHECKER_MODEL_ID} into GPU memory...")
         self.pipe = pipeline(
@@ -185,12 +198,14 @@ class Checker:
             model_kwargs={"dtype": "auto"},
         )
         self._last_active = time.time()
+        self.load_time = time.time() - t0
         _start_idle_countdown("Checker", SCALEDOWN_SECONDS, lambda: self._last_active)
         print(f"[Checker] Ready. Will stay warm for {SCALEDOWN_SECONDS}s after last request.")
 
     @modal.method()
-    def review(self, original_prompt: str, draft: str) -> str:
+    def review(self, original_prompt: str, draft: str) -> dict:
         self._last_active = time.time()  # reset idle clock
+        t0 = time.time()
         user_message = (
             f"ORIGINAL PROMPT:\n{original_prompt}\n\n"
             f"DRAFT RESPONSE:\n{draft}"
@@ -200,10 +215,19 @@ class Checker:
             {"role": "user",   "content": user_message},
         ]
         result = self.pipe(messages, max_new_tokens=2048, do_sample=False)
+        inf_time = time.time() - t0
         self._last_active = time.time()  # reset again after inference
         review = result[0]["generated_text"][-1]["content"]
         print(f"[Checker] Review:\n{review}\n")
-        return review
+        
+        load_time = getattr(self, "load_time", 0.0)
+        self.load_time = 0.0
+        
+        return {
+            "review": review,
+            "load_time": load_time,
+            "inference_time": inf_time
+        }
 
 
 # ═══════════════════════════════════════════════════════════
@@ -277,10 +301,16 @@ def call_online_model(model_id: str, messages: list) -> str:
         "stream": False
     }
 
-    resp = requests.post(url, headers=headers, json=payload)
-    resp.raise_for_status()
-    data = resp.json()
-    return data["choices"][0]["message"]["content"]
+    try:
+        resp = requests.post(url, headers=headers, json=payload)
+        resp.raise_for_status()
+        data = resp.json()
+        return data["choices"][0]["message"]["content"]
+    except requests.exceptions.RequestException as e:
+        error_msg = f"API Error ({url}): {str(e)}"
+        if hasattr(e, 'response') and e.response is not None:
+            error_msg += f" | Body: {e.response.text}"
+        raise RuntimeError(error_msg)
 
 
 # ═══════════════════════════════════════════════════════════
@@ -299,8 +329,10 @@ async def run_pipeline(prompt: str, maker_model_id: str = MAKER_MODEL_ID, checke
 
     # Single-turn: wrap prompt as a one-message history
     messages = [{"role": "user", "content": prompt}]
-    draft  = await maker.generate.remote.aio(messages)
-    review = await checker.review.remote.aio(prompt, draft)
+    maker_res = await maker.generate.remote.aio(messages)
+    draft = maker_res["draft"]
+    checker_res = await checker.review.remote.aio(prompt, draft)
+    review = checker_res["review"]
 
     print(f"\n[Maker  - {maker_model_id}]\n{draft}\n")
     print(f"\n[Checker - {checker_model_id}]\n{review}\n")
@@ -364,41 +396,58 @@ async def web_check(body: dict):
     checker_model_id = body.get("checker") or CHECKER_MODEL_ID
 
     async def generate():
-        # Yield an initial comment to flush reverse-proxy buffers
-        yield f": {' ' * 2048}\n\n"
+        try:
+            # Yield an initial comment to flush reverse-proxy buffers
+            yield f": {' ' * 2048}\n\n"
 
-        # ── MAKER ──────────────────────────────────────────────────
-        # Pass the full conversation history so the model can answer in context.
-        if maker_model_id.startswith("online/"):
-            draft = call_online_model(maker_model_id, messages)
-        else:
-            maker = Maker()
-            draft = await maker.generate.remote.aio(messages)
+            # ── MAKER ──────────────────────────────────────────────────
+            # Pass the full conversation history so the model can answer in context.
+            if maker_model_id.startswith("online/"):
+                t0 = time.time()
+                draft = call_online_model(maker_model_id, messages)
+                m_load_time = 0.0
+                m_inf_time = time.time() - t0
+            else:
+                maker = Maker()
+                maker_res = await maker.generate.remote.aio(messages)
+                draft = maker_res["draft"]
+                m_load_time = maker_res["load_time"]
+                m_inf_time = maker_res["inference_time"]
 
-        # Strip chain-of-thought tokens before rendering or passing to checker
-        # (works for both on-prem models like Qwen3 and online models like Gemini)
-        draft = strip_think(draft)
+            # Strip chain-of-thought tokens before rendering or passing to checker
+            # (works for both on-prem models like Qwen3 and online models like Gemini)
+            draft = strip_think(draft)
 
-        yield f"data: {json.dumps({'step': 'maker', 'draft': draft, 'model': maker_model_id})}\n\n"
+            yield f"data: {json.dumps({'step': 'maker', 'draft': draft, 'model': maker_model_id})}\n\n"
 
-        # ── CHECKER ────────────────────────────────────────────────
-        # The Checker is always single-turn: it only reviews the current (clean) draft.
-        checker_user_msg = (
-            f"ORIGINAL PROMPT:\n{prompt}\n\n"
-            f"DRAFT RESPONSE:\n{draft}"
-        )
-        checker_messages = [
-            {"role": "system", "content": CHECKER_SYSTEM},
-            {"role": "user",   "content": checker_user_msg},
-        ]
-        if checker_model_id.startswith("online/"):
-            review = call_online_model(checker_model_id, checker_messages)
-        else:
-            checker = Checker()
-            review = await checker.review.remote.aio(prompt, draft)
+            # ── CHECKER ────────────────────────────────────────────────
+            # The Checker is always single-turn: it only reviews the current (clean) draft.
+            checker_user_msg = (
+                f"ORIGINAL PROMPT:\n{prompt}\n\n"
+                f"DRAFT RESPONSE:\n{draft}"
+            )
+            checker_messages = [
+                {"role": "system", "content": CHECKER_SYSTEM},
+                {"role": "user",   "content": checker_user_msg},
+            ]
+            if checker_model_id.startswith("online/"):
+                t0 = time.time()
+                review = call_online_model(checker_model_id, checker_messages)
+                c_load_time = 0.0
+                c_inf_time = time.time() - t0
+            else:
+                checker = Checker()
+                checker_res = await checker.review.remote.aio(prompt, draft)
+                review = checker_res["review"]
+                c_load_time = checker_res["load_time"]
+                c_inf_time = checker_res["inference_time"]
 
-        parsed = parse_checker_output(review)
-        yield f"data: {json.dumps({'step': 'checker', 'review': parsed, 'model': checker_model_id})}\n\n"
+            parsed = parse_checker_output(review)
+            yield f"data: {json.dumps({'step': 'checker', 'review': parsed, 'model': checker_model_id})}\n\n"
+
+            yield f"data: {json.dumps({'step': 'metrics', 'maker_load_time': m_load_time, 'maker_inference_time': m_inf_time, 'checker_load_time': c_load_time, 'checker_inference_time': c_inf_time, 'closing_time': SCALEDOWN_SECONDS})}\n\n"
+        except Exception as e:
+            yield f"data: {json.dumps({'error': str(e)})}\n\n"
 
     return StreamingResponse(generate(), media_type="text/event-stream")
 

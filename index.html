@@ -115,13 +115,17 @@
         /* ── Layout ── */
         .app {
             display: grid;
-            grid-template-rows: 56px 1fr auto;
+            grid-template-rows: auto 1fr auto;
             height: 100vh;
             max-width: 860px;
             margin: 0 auto;
             padding: 0 16px;
             position: relative;
             /* anchor for settings drawer */
+        }
+        
+        .top-section {
+            z-index: 10;
         }
 
         /* ── Header ── */
@@ -784,6 +788,74 @@
             /* darker background for internal monologue */
         }
 
+        /* ── Stats & Timer ── */
+        .timer-badge {
+            display: inline-flex;
+            width: 100%;
+            align-items: center;
+            justify-content: center;
+            font-family: var(--mono);
+            font-size: 11px;
+            background: var(--surface2);
+            border-bottom: 1px solid var(--border);
+            padding: 6px 16px;
+            color: var(--muted);
+            margin: 0;
+            box-sizing: border-box;
+            letter-spacing: 0.05em;
+            animation: slideDown .2s ease-out forwards;
+        }
+        
+        .timer-badge.active {
+            color: var(--text);
+            border-bottom-color: var(--accent);
+            background: rgba(91, 127, 255, 0.05); /* very subtle blue tint */
+            animation: pulse-bg 2s infinite ease-in-out, slideDown .2s ease-out forwards;
+        }
+
+        @keyframes slideDown {
+            from { transform: translateY(-4px); opacity: 0; }
+            to { transform: translateY(0); opacity: 1; }
+        }
+
+        @keyframes pulse-bg {
+            0% { background: rgba(91, 127, 255, 0.02); }
+            50% { background: rgba(91, 127, 255, 0.06); }
+            100% { background: rgba(91, 127, 255, 0.02); }
+        }
+
+        .stats-container {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
+            gap: 12px;
+            margin-top: 14px;
+            padding: 12px 14px;
+            background: var(--surface2);
+            border: 1px solid var(--border2);
+            border-radius: var(--radius-lg);
+        }
+
+        .stat-item {
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+        }
+
+        .stat-label {
+            font-family: var(--mono);
+            font-size: 10px;
+            letter-spacing: .06em;
+            color: var(--muted);
+            text-transform: uppercase;
+        }
+
+        .stat-value {
+            font-family: var(--mono);
+            font-size: 13px;
+            color: var(--text);
+            font-weight: 500;
+        }
+
         /* ── Skeleton loader ── */
         .skeleton-cards {
             display: grid;
@@ -1105,7 +1177,8 @@
 
 <body>
     <div class="app">
-        <header>
+        <div class="top-section">
+            <header>
             <div class="logo">
                 <div class="logo-dot"></div>
                 <span class="logo-title">maker</span>
@@ -1146,6 +1219,8 @@
             <!-- Mobile gear button -->
             <button class="settings-btn" id="settingsBtn" title="Settings">⚙</button>
         </header>
+        <div class="timer-badge" id="mainTimer" style="display: none;">0.0s</div>
+        </div>
 
         <!-- Mobile settings drawer (hidden by default, shown on small screens) -->
         <div class="settings-drawer" id="settingsDrawer">
@@ -1208,6 +1283,57 @@
         const input = document.getElementById('promptInput');
         const sendBtn = document.getElementById('sendBtn');
         const ctxCounter = document.getElementById('ctxCounter');
+        
+        // Timer
+        const mainTimer = document.getElementById('mainTimer');
+        let timerInterval;
+        let idleInterval;
+        let timerStart = 0;
+
+        function startTimer() {
+            clearInterval(idleInterval);
+            mainTimer.style.display = 'inline-flex';
+            mainTimer.classList.add('active');
+            mainTimer.style.color = 'var(--text)';
+            timerStart = Date.now();
+            timerInterval = setInterval(() => {
+                const elapsed = ((Date.now() - timerStart) / 1000).toFixed(1);
+                if (typeof makerDraft === 'undefined' || !makerDraft) {
+                    if (isOnlineMode) {
+                        mainTimer.textContent = `Waiting for API... ${elapsed}s`;
+                    } else {
+                        if (elapsed > 8.0) {
+                            mainTimer.textContent = `Cold start (loading weights)... ${elapsed}s`;
+                        } else if (elapsed > 2.0) {
+                            mainTimer.textContent = `Waking server... ${elapsed}s`;
+                        } else {
+                            mainTimer.textContent = `Connecting... ${elapsed}s`;
+                        }
+                    }
+                } else {
+                    mainTimer.textContent = `Generating... ${elapsed}s`;
+                }
+            }, 100);
+        }
+
+        function stopTimerAndIdle(closingTime) {
+            clearInterval(timerInterval);
+            mainTimer.classList.remove('active');
+            mainTimer.style.color = 'var(--muted)';
+            
+            let remaining = closingTime || 240;
+            mainTimer.textContent = `Server is warm, closing in ${remaining}s...`;
+            
+            idleInterval = setInterval(() => {
+                remaining--;
+                if (remaining <= 0) {
+                    mainTimer.textContent = 'Server sleeping';
+                    clearInterval(idleInterval);
+                } else {
+                    mainTimer.textContent = `Server is warm, closing in ${remaining}s...`;
+                }
+            }, 1000);
+        }
 
         // Desktop controls
         const epInput = document.getElementById('endpointInput');
@@ -1514,6 +1640,47 @@
             feed.scrollTop = feed.scrollHeight;
         }
 
+        function renderMetrics(turn, data) {
+            const mLoad = data.maker_load_time > 0 ? `Cold start (${data.maker_load_time.toFixed(2)}s)` : 'Server is warm';
+            const mInf = data.maker_inference_time.toFixed(2) + 's';
+            const cLoad = data.checker_load_time > 0 ? `Cold start (${data.checker_load_time.toFixed(2)}s)` : 'Server is warm';
+            const cInf = data.checker_inference_time.toFixed(2) + 's';
+            const total = ((Date.now() - timerStart) / 1000).toFixed(2) + 's';
+            const idle = data.closing_time ? `Closing in ${data.closing_time}s` : 'N/A';
+            
+            const stats = document.createElement('div');
+            stats.className = 'stats-container';
+            stats.innerHTML = `
+                <div class="stat-item">
+                    <span class="stat-label">Maker Load</span>
+                    <span class="stat-value">${mLoad}</span>
+                </div>
+                <div class="stat-item">
+                    <span class="stat-label">Maker Infer</span>
+                    <span class="stat-value">${mInf}</span>
+                </div>
+                <div class="stat-item">
+                    <span class="stat-label">Checker Load</span>
+                    <span class="stat-value">${cLoad}</span>
+                </div>
+                <div class="stat-item">
+                    <span class="stat-label">Checker Infer</span>
+                    <span class="stat-value">${cInf}</span>
+                </div>
+                <div class="stat-item">
+                    <span class="stat-label">Total Time</span>
+                    <span class="stat-value">${total}</span>
+                </div>
+                <div class="stat-item">
+                    <span class="stat-label">Idle Timeout</span>
+                    <span class="stat-value">${idle}</span>
+                </div>
+            `;
+            stats.style.animation = 'fadeUp .3s ease both';
+            turn.appendChild(stats);
+            feed.scrollTop = feed.scrollHeight;
+        }
+
         function renderMaker(turn, makerText, makerModelId, checkerModelId) {
             const getModelName = (selectElem, id) => {
                 const opt = Array.from(selectElem.options).find(o => o.value === id);
@@ -1568,6 +1735,9 @@
             const skeleton = appendSkeleton();
 
             let makerDraft = '';
+            let closingTime = 240;
+            
+            startTimer();
 
             try {
                 const res = await fetch(endpoint, {
@@ -1616,6 +1786,9 @@
                                 makerModelId: receivedMakerModelId,
                                 checkerModelId: receivedCheckerModelId
                             });
+                        } else if (data.step === 'metrics') {
+                            if (data.closing_time) closingTime = data.closing_time;
+                            renderMetrics(skeleton, data);
                         }
                     }
                 }
@@ -1632,6 +1805,7 @@
                 updateCtxCounter();
                 skeleton.innerHTML = `<div class="error-chip">// error: ${escHtml(err.message)}</div>`;
             } finally {
+                stopTimerAndIdle(closingTime);
                 sendBtn.disabled = false;
                 input.focus();
             }
