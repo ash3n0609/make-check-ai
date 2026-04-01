@@ -2,4 +2,6 @@
 .venv/
 __pycache__/
 venv/
-.env
+serviceAccountKey.json
+config.yaml
+config.js

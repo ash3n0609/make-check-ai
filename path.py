@@ -22,14 +22,21 @@ import os
 import time
 import threading
 from dotenv import load_dotenv
+import yaml
+from pathlib import Path
 
 load_dotenv()
+
+# Load configuration
+config_path = Path(__file__).parent / "config.yaml"
+with open(config_path, "r") as f:
+    config = yaml.safe_load(f)
 
 # ─────────────────────────────────────────────
 # Infrastructure
 # ─────────────────────────────────────────────
 
-app = modal.App("maker-checker-demo")
+app = modal.App(config["modal"]["app_name"])
 
 # Online API Endpoints
 KIMI_ENDPOINT = "https://integrate.api.nvidia.com/v1/chat/completions"
@@ -49,13 +56,19 @@ image = (
         "protobuf",
         "fastapi[standard]",
         "requests",
+        "firebase-admin",
+        "python-dotenv",
+        "PyYAML",
     )
     .env({"HF_HUB_ENABLE_HF_TRANSFER": "1"})
+    .add_local_file(str(Path(__file__).parent / "firebase_config.py"), remote_path="/root/firebase_config.py")
+    .add_local_file(str(Path(__file__).parent / "chat_service.py"), remote_path="/root/chat_service.py")
+    .add_local_file(str(Path(__file__).parent / "serviceAccountKey.json"), remote_path="/root/serviceAccountKey.json")
 )
 
 VOLUME_PATH      = "/root/.cache/huggingface"
-MAKER_MODEL_ID   = "allenai/OLMo-2-1124-7B-Instruct"
-CHECKER_MODEL_ID = "Qwen/Qwen3-4B"
+MAKER_MODEL_ID   = config["models"]["maker"]
+CHECKER_MODEL_ID = config["models"]["checker"]
 
 CHECKER_SYSTEM = """You are a rigorous fact-checker and quality reviewer.
 
@@ -68,6 +81,15 @@ Your job is to:
 2. Note anything that is well-done.
 3. Give an overall verdict: PASS, PASS_WITH_NOTES, or FAIL.
 4. If FAIL or PASS_WITH_NOTES, provide a concise improved response.
+5. Ensure the DRAFT RESPONSE follows the mandatory format (Goal, Constraints, Output Format, Success Criteria, Failure Conditions). If it does not, mark as FAIL and provide a correctly formatted version in the <improved> section.
+
+The Improved Response in the <improved> tag MUST follow this format:
+Goal: ...
+Constraints: ...
+Output Format: ...
+Success Criteria: ...
+Failure Conditions: ...
+(Followed by the actual revised answer)
 
 Format your reply EXACTLY using the following XML tags:
 
@@ -85,6 +107,18 @@ Format your reply EXACTLY using the following XML tags:
 revised answer, or "N/A" if PASS
 </improved>
 """
+
+MAKER_SYSTEM = """You are a helpful and precise assistant.
+You MUST provide your response in the following structured format at the very beginning:
+
+Goal: <What the user is trying to achieve>
+Constraints: <List any restrictions, styles, or requirements>
+Output Format: <How the information is presented>
+Success Criteria: <What makes this response good>
+Failure Conditions: <What would make this response fail>
+
+After providing these fields, provide your actual answer below them."""
+
 
 
 # ═══════════════════════════════════════════════════════════
@@ -149,6 +183,11 @@ class Maker:
         """
         self._last_active = time.time()  # reset idle clock
         t0 = time.time()
+
+        # Inject system prompt if missing
+        if not any(m.get("role") == "system" for m in messages):
+            messages = [{"role": "system", "content": MAKER_SYSTEM}] + messages
+
         result = self.pipe(
             messages,
             max_new_tokens=512,
@@ -295,7 +334,7 @@ def call_online_model(model_id: str, messages: list) -> str:
 
     payload = {
         "model": actual_model,
-        "messages": messages,
+        "messages": messages if any(m.get("role") == "system" for m in messages) else [{"role": "system", "content": MAKER_SYSTEM}] + messages,
         "max_tokens": 4096,
         "temperature": 0.7,
         "stream": False
@@ -365,8 +404,12 @@ fastapi_app.add_middleware(
 def fastapi_wrapper():
     return fastapi_app
 
-@app.function(image=image, secrets=[modal.Secret.from_dotenv()], timeout=1200)
-@modal.fastapi_endpoint(method="POST", label="maker-checker")
+@app.function(
+    image=image, 
+    secrets=[modal.Secret.from_dotenv()], 
+    timeout=1200
+)
+@modal.fastapi_endpoint(method="POST", label=config["modal"]["endpoint_label"])
 async def web_check(body: dict):
     """
     POST /maker-checker
@@ -418,6 +461,23 @@ async def web_check(body: dict):
             # (works for both on-prem models like Qwen3 and online models like Gemini)
             draft = strip_think(draft)
 
+            user_id = body.get("user_id")
+            chat_id = body.get("chat_id")
+            if user_id and chat_id:
+                try:
+                    from chat_service import save_message, save_chat_title
+                    # Save user prompt (if not already saved)
+                    # For simplicity, we save it here, but ideally we save it when it arrives
+                    # But we don't want to block the start of generation.
+                    # Since we are in a generator, it's fine.
+                    save_message(user_id, chat_id, "user", prompt)
+                    
+                    # If this is the first message, maybe set a title
+                    # We can use the first 40 chars of the prompt as title
+                    save_chat_title(user_id, chat_id, prompt[:40] + "...")
+                except Exception as e:
+                    print(f"Error saving user message: {e}")
+
             yield f"data: {json.dumps({'step': 'maker', 'draft': draft, 'model': maker_model_id})}\n\n"
 
             # ── CHECKER ────────────────────────────────────────────────
@@ -443,13 +503,45 @@ async def web_check(body: dict):
                 c_inf_time = checker_res["inference_time"]
 
             parsed = parse_checker_output(review)
-            yield f"data: {json.dumps({'step': 'checker', 'review': parsed, 'model': checker_model_id})}\n\n"
+            
+            if user_id and chat_id:
+                try:
+                    from chat_service import save_message
+                    save_message(user_id, chat_id, "assistant", draft, metadata=parsed)
+                except Exception as e:
+                    print(f"Error saving assistant message: {e}")
 
+            yield f"data: {json.dumps({'step': 'checker', 'review': parsed, 'model': checker_model_id})}\n\n"
             yield f"data: {json.dumps({'step': 'metrics', 'maker_load_time': m_load_time, 'maker_inference_time': m_inf_time, 'checker_load_time': c_load_time, 'checker_inference_time': c_inf_time, 'closing_time': SCALEDOWN_SECONDS})}\n\n"
         except Exception as e:
             yield f"data: {json.dumps({'error': str(e)})}\n\n"
 
     return StreamingResponse(generate(), media_type="text/event-stream")
+
+@app.function(
+    image=image, 
+    secrets=[modal.Secret.from_dotenv()]
+)
+@modal.fastapi_endpoint(method="POST", label=config["modal"]["get_chats_label"])
+async def get_chats(body: dict):
+    from chat_service import get_user_chats
+    user_id = body.get("user_id")
+    if not user_id:
+        return {"error": "User ID required"}
+    return get_user_chats(user_id)
+
+@app.function(
+    image=image, 
+    secrets=[modal.Secret.from_dotenv()]
+)
+@modal.fastapi_endpoint(method="POST", label=config["modal"]["get_history_label"])
+async def get_history(body: dict):
+    from chat_service import get_chat_history
+    user_id = body.get("user_id")
+    chat_id = body.get("chat_id")
+    if not user_id or not chat_id:
+        return {"error": "User ID and Chat ID required"}
+    return get_chat_history(user_id, chat_id)
 
 
 # ═══════════════════════════════════════════════════════════

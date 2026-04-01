@@ -10,10 +10,21 @@
         href="https://fonts.googleapis.com/css2?family=DM+Mono:ital,wght@0,300;0,400;0,500;1,400&family=DM+Sans:wght@300;400;500&display=swap"
         rel="stylesheet">
     <!-- Markdown rendering -->
+    <script src="config.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/marked@9/marked.min.js"></script>
     <!-- Syntax highlighting (official CDN assets — registers hljs globally) -->
     <link rel="stylesheet" href="https://unpkg.com/@highlightjs/cdn-assets@11.9.0/styles/github-dark.min.css">
     <script src="https://unpkg.com/@highlightjs/cdn-assets@11.9.0/highlight.min.js"></script>
+
+    <!-- Firebase SDKs -->
+    <script src="https://www.gstatic.com/firebasejs/10.8.1/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.8.1/firebase-auth-compat.js"></script>
+
+
+    <!-- Firebase SDKs -->
+    <script src="https://www.gstatic.com/firebasejs/10.8.1/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.8.1/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore-compat.js"></script>
     <style>
         /* ── Reset & base ── */
         *,
@@ -78,8 +89,29 @@
             color: #5a5850;
         }
 
+        html[data-theme="light"] .md-body strong {
+            color: #111827;
+        }
+
+        html[data-theme="light"] .md-body em {
+            color: #374151;
+        }
+
+        html[data-theme="light"] .md-body code {
+            color: #be185d;
+            background: #f3f4f6;
+            border-color: #d1d5db;
+        }
+
         html[data-theme="light"] .md-body pre {
             background: #1e1e2e;
+            color: #c9d1d9;
+        }
+
+        html[data-theme="light"] .md-body pre code {
+            color: #c9d1d9 !important;
+            background: transparent !important;
+            border: none !important;
         }
 
         html[data-theme="light"] .card.maker {
@@ -115,15 +147,162 @@
         /* ── Layout ── */
         .app {
             display: grid;
-            grid-template-rows: auto 1fr auto;
+            grid-template-columns: 260px 1fr;
+            grid-template-rows: 56px 1fr auto;
             height: 100vh;
-            max-width: 860px;
-            margin: 0 auto;
-            padding: 0 16px;
             position: relative;
-            /* anchor for settings drawer */
         }
-        
+
+        header,
+        .feed,
+        .input-bar {
+            padding-left: clamp(16px, 5vw, 64px) !important;
+            padding-right: clamp(16px, 5vw, 64px) !important;
+        }
+
+        /* ── Sidebar ── */
+        .sidebar {
+            grid-row: 1 / 4;
+            background: var(--surface);
+            border-right: 1px solid var(--border);
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+            z-index: 20;
+        }
+
+        .sidebar-header {
+            padding: 16px;
+            border-bottom: 1px solid var(--border);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .sidebar-content {
+            flex: 1;
+            overflow-y: auto;
+            padding: 12px;
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+        }
+
+        .chat-item {
+            padding: 10px 12px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 13px;
+            color: var(--muted);
+            border: 1px solid transparent;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+
+        .chat-item:hover {
+            background: var(--surface2);
+            color: var(--text);
+        }
+
+        .chat-item.active {
+            background: var(--surface2);
+            color: var(--text);
+            border-color: var(--accent);
+        }
+
+        .sidebar-footer {
+            padding: 16px;
+            border-top: 1px solid var(--border);
+        }
+
+        .user-profile {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            font-size: 13px;
+        }
+
+        .user-avatar {
+            width: 32px;
+            height: 32px;
+            border-radius: 50%;
+            object-fit: cover;
+        }
+
+        .login-btn {
+            width: 100%;
+            background: var(--accent);
+            color: white;
+            border: none;
+            padding: 8px;
+            border-radius: 6px;
+            font-family: var(--mono);
+            font-size: 12px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+        }
+
+        .sidebar-toggle {
+            display: none;
+            background: none;
+            border: 1px solid var(--border);
+            color: var(--muted);
+            padding: 6px;
+            border-radius: 4px;
+            cursor: pointer;
+            margin-right: 8px;
+        }
+
+        @media (max-width: 900px) {
+            .app {
+                grid-template-columns: 1fr;
+            }
+
+            .sidebar {
+                position: fixed;
+                top: 0;
+                left: 0;
+                bottom: 0;
+                width: 280px;
+                box-shadow: 20px 0 50px rgba(0, 0, 0, 0.5);
+                transform: translateX(-100%);
+                transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+                display: flex !important;
+                z-index: 50;
+            }
+
+            .sidebar.open {
+                transform: translateX(0);
+            }
+
+            .sidebar-toggle {
+                display: block !important;
+            }
+
+            .sidebar-overlay {
+                position: fixed;
+                top: 0;
+                left: 0;
+                right: 0;
+                bottom: 0;
+                background: rgba(0, 0, 0, 0.4);
+                backdrop-filter: blur(2px);
+                z-index: 40;
+                opacity: 0;
+                pointer-events: none;
+                transition: opacity 0.3s ease;
+            }
+
+            .sidebar-overlay.open {
+                opacity: 1;
+                pointer-events: auto;
+            }
+        }
+
         .top-section {
             z-index: 10;
         }
@@ -322,9 +501,17 @@
             stroke-linejoin: round;
         }
 
-        .theme-btn .icon-moon { display: none; }
-        html[data-theme="light"] .theme-btn .icon-sun { display: none; }
-        html[data-theme="light"] .theme-btn .icon-moon { display: block; }
+        .theme-btn .icon-moon {
+            display: none;
+        }
+
+        html[data-theme="light"] .theme-btn .icon-sun {
+            display: none;
+        }
+
+        html[data-theme="light"] .theme-btn .icon-moon {
+            display: block;
+        }
 
         /* ── Settings Drawer ── */
         .settings-drawer {
@@ -465,12 +652,6 @@
 
             .header-controls {
                 display: none;
-            }
-        }
-
-        @media (max-width: 700px) {
-            .app {
-                padding: 0 12px;
             }
         }
 
@@ -805,23 +986,39 @@
             letter-spacing: 0.05em;
             animation: slideDown .2s ease-out forwards;
         }
-        
+
         .timer-badge.active {
             color: var(--text);
             border-bottom-color: var(--accent);
-            background: rgba(91, 127, 255, 0.05); /* very subtle blue tint */
+            background: rgba(91, 127, 255, 0.05);
+            /* very subtle blue tint */
             animation: pulse-bg 2s infinite ease-in-out, slideDown .2s ease-out forwards;
         }
 
         @keyframes slideDown {
-            from { transform: translateY(-4px); opacity: 0; }
-            to { transform: translateY(0); opacity: 1; }
+            from {
+                transform: translateY(-4px);
+                opacity: 0;
+            }
+
+            to {
+                transform: translateY(0);
+                opacity: 1;
+            }
         }
 
         @keyframes pulse-bg {
-            0% { background: rgba(91, 127, 255, 0.02); }
-            50% { background: rgba(91, 127, 255, 0.06); }
-            100% { background: rgba(91, 127, 255, 0.02); }
+            0% {
+                background: rgba(91, 127, 255, 0.02);
+            }
+
+            50% {
+                background: rgba(91, 127, 255, 0.06);
+            }
+
+            100% {
+                background: rgba(91, 127, 255, 0.02);
+            }
         }
 
         .stats-container {
@@ -1176,50 +1373,77 @@
 </head>
 
 <body>
+    <div class="sidebar-overlay" id="sidebarOverlay" onclick="closeSidebar()"></div>
     <div class="app">
+        <aside class="sidebar" id="sidebar">
+            <div class="sidebar-header">
+                <div class="logo"><div class="logo-dot"></div><span class="logo-title" style="font-size:12px;">history</span></div>
+                <button class="new-chat-btn" onclick="newChat()">✦ new</button>
+            </div>
+            <div class="sidebar-content" id="chatHistoryList">
+                <div style="padding: 20px; text-align: center; color: var(--muted); font-size: 12px;">Sign in to see your chat history</div>
+            </div>
+            <div class="sidebar-footer" id="sidebarFooter">
+                <button class="login-btn" onclick="signInWithGoogle()">Sign in with Google</button>
+            </div>
+        </aside>
+
         <div class="top-section">
             <header>
-            <div class="logo">
-                <div class="logo-dot"></div>
-                <span class="logo-title">maker</span>
-                <span class="logo-sep">·</span>
-                <span class="logo-title">checker</span>
-            </div>
-
-            <!-- New Chat + context (always visible) -->
-            <button class="new-chat-btn" id="newChatBtn" onclick="newChat()" title="Clear conversation history">✦ new
-                chat</button>
-            <span class="context-counter" id="ctxCounter" title="Messages in context">0 turns</span>
-
-            <!-- Desktop inline controls -->
-            <div class="header-controls">
-                <div class="endpoint-input">
-                    <label>endpoint</label>
-                    <input type="text" id="endpointInput" placeholder="https://your-name--maker-checker.modal.run" />
-                </div>
-                <div class="toggle-container">
-                    <span class="toggle-label active" id="labelOnPrem" onclick="setMode('onprem')">On-Prem</span>
-                    <div class="toggle-switch" id="modeToggle" onclick="toggleMode()">
-                        <div class="toggle-thumb"></div>
-                    </div>
-                    <span class="toggle-label" id="labelOnline" onclick="setMode('online')">Online</span>
-                </div>
-                <div class="badge">
-                    <select id="makerSelect" class="model-select"></select>
+                <button class="sidebar-toggle" onclick="toggleSidebar()">☰</button>
+                <div class="logo">
+                    <div class="logo-dot"></div>
+                    <span class="logo-title">maker</span>
                     <span class="logo-sep">·</span>
-                    <select id="checkerSelect" class="model-select"></select>
+                    <span class="logo-title">checker</span>
                 </div>
 
-                <button class="theme-btn" onclick="toggleTheme()" title="Toggle appearance">
-                    <svg class="icon-sun" viewBox="0 0 24 24"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/></svg>
-                    <svg class="icon-moon" viewBox="0 0 24 24"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
-                </button>
-            </div>
+                <!-- New Chat + context (always visible) -->
+                <button class="new-chat-btn" id="newChatBtn" onclick="newChat()" title="Clear conversation history">✦ new
+                    chat</button>
+                <span class="context-counter" id="ctxCounter" title="Messages in context">0 turns</span>
 
-            <!-- Mobile gear button -->
-            <button class="settings-btn" id="settingsBtn" title="Settings">⚙</button>
-        </header>
-        <div class="timer-badge" id="mainTimer" style="display: none;">0.0s</div>
+                <!-- Desktop inline controls -->
+                <div class="header-controls">
+                    <div class="endpoint-input">
+                        <label>endpoint</label>
+                        <input type="text" id="endpointInput" placeholder="https://your-name--maker-checker.modal.run" />
+                    </div>
+                    <div class="toggle-container">
+                        <span class="toggle-label active" id="labelOnPrem" onclick="setMode('onprem')">On-Prem</span>
+                        <div class="toggle-switch" id="modeToggle" onclick="toggleMode()">
+                            <div class="toggle-thumb"></div>
+                        </div>
+                        <span class="toggle-label" id="labelOnline" onclick="setMode('online')">Online</span>
+                    </div>
+                    <div class="badge">
+                        <select id="makerSelect" class="model-select"></select>
+                        <span class="logo-sep">·</span>
+                        <select id="checkerSelect" class="model-select"></select>
+                    </div>
+
+                    <button class="theme-btn" onclick="toggleTheme()" title="Toggle appearance">
+                        <svg class="icon-sun" viewBox="0 0 24 24">
+                            <circle cx="12" cy="12" r="5" />
+                            <line x1="12" y1="1" x2="12" y2="3" />
+                            <line x1="12" y1="21" x2="12" y2="23" />
+                            <line x1="4.22" y1="4.22" x2="5.64" y2="5.64" />
+                            <line x1="18.36" y1="18.36" x2="19.78" y2="19.78" />
+                            <line x1="1" y1="12" x2="3" y2="12" />
+                            <line x1="21" y1="12" x2="23" y2="12" />
+                            <line x1="4.22" y1="19.78" x2="5.64" y2="18.36" />
+                            <line x1="18.36" y1="5.64" x2="19.78" y2="4.22" />
+                        </svg>
+                        <svg class="icon-moon" viewBox="0 0 24 24">
+                            <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z" />
+                        </svg>
+                    </button>
+                </div>
+
+                <!-- Mobile gear button -->
+                <button class="settings-btn" id="settingsBtn" title="Settings">⚙</button>
+            </header>
+            <div class="timer-badge" id="mainTimer" style="display: none;">0.0s</div>
         </div>
 
         <!-- Mobile settings drawer (hidden by default, shown on small screens) -->
@@ -1243,8 +1467,20 @@
                 <select id="makerSelectMobile" class="model-select"></select>
                 <select id="checkerSelectMobile" class="model-select"></select>
                 <button class="theme-btn" onclick="toggleTheme()" title="Toggle appearance">
-                    <svg class="icon-sun" viewBox="0 0 24 24"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/></svg>
-                    <svg class="icon-moon" viewBox="0 0 24 24"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
+                    <svg class="icon-sun" viewBox="0 0 24 24">
+                        <circle cx="12" cy="12" r="5" />
+                        <line x1="12" y1="1" x2="12" y2="3" />
+                        <line x1="12" y1="21" x2="12" y2="23" />
+                        <line x1="4.22" y1="4.22" x2="5.64" y2="5.64" />
+                        <line x1="18.36" y1="18.36" x2="19.78" y2="19.78" />
+                        <line x1="1" y1="12" x2="3" y2="12" />
+                        <line x1="21" y1="12" x2="23" y2="12" />
+                        <line x1="4.22" y1="19.78" x2="5.64" y2="18.36" />
+                        <line x1="18.36" y1="5.64" x2="19.78" y2="4.22" />
+                    </svg>
+                    <svg class="icon-moon" viewBox="0 0 24 24">
+                        <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z" />
+                    </svg>
                 </button>
             </div>
         </div>
@@ -1283,12 +1519,22 @@
         const input = document.getElementById('promptInput');
         const sendBtn = document.getElementById('sendBtn');
         const ctxCounter = document.getElementById('ctxCounter');
-        
+        const chatHistoryList = document.getElementById('chatHistoryList');
+        const sidebarFooter = document.getElementById('sidebarFooter');
+
         // Timer
         const mainTimer = document.getElementById('mainTimer');
         let timerInterval;
         let idleInterval;
         let timerStart = 0;
+
+        // Desktop controls
+        const epInput = document.getElementById('endpointInput');
+        const makerSelect = document.getElementById('makerSelect');
+        const checkerSelect = document.getElementById('checkerSelect');
+        const modeToggle = document.getElementById('modeToggle');
+        const labelOnPrem = document.getElementById('labelOnPrem');
+        const labelOnline = document.getElementById('labelOnline');
 
         function startTimer() {
             clearInterval(idleInterval);
@@ -1335,80 +1581,81 @@
             }, 1000);
         }
 
-        // Desktop controls
-        const epInput = document.getElementById('endpointInput');
-        const makerSelect = document.getElementById('makerSelect');
-        const checkerSelect = document.getElementById('checkerSelect');
-        const modeToggle = document.getElementById('modeToggle');
-        const labelOnPrem = document.getElementById('labelOnPrem');
-        const labelOnline = document.getElementById('labelOnline');
-
         // ── Theme management ────────────────────────────────────────────
         function applyTheme(theme) {
             document.documentElement.setAttribute('data-theme', theme);
             localStorage.setItem('mc_theme', theme);
         }
 
-        function toggleTheme() {
-            const current = document.documentElement.getAttribute('data-theme') || 'dark';
-            applyTheme(current === 'dark' ? 'light' : 'dark');
+        function toggleSidebar() {
+            document.getElementById('sidebar').classList.toggle('open');
+            const overlay = document.getElementById('sidebarOverlay');
+            if (overlay) overlay.classList.toggle('open');
         }
 
-        // Initialize theme
-        (function initTheme() {
-            const saved = localStorage.getItem('mc_theme');
-            if (saved) {
-                applyTheme(saved);
+        function closeSidebar() {
+            document.getElementById('sidebar').classList.remove('open');
+            const overlay = document.getElementById('sidebarOverlay');
+            if (overlay) overlay.classList.remove('open');
+        }
+
+        async function signInWithGoogle() { try { await auth.signInWithPopup(new firebase.auth.GoogleAuthProvider()); } catch (e) { alert(e.message); } }
+        function signOut() { auth.signOut(); newChat(); }
+
+        auth.onAuthStateChanged(user => {
+            currentUser = user;
+            if (user) {
+                sidebarFooter.innerHTML = `<div class="user-profile"><img src="${user.photoURL}" class="user-avatar" alt="Avatar"><div style="flex:1; overflow:hidden; text-overflow:ellipsis;">${user.displayName}</div><button onclick="signOut()" style="background:none; border:none; color:var(--fail); cursor:pointer;">Logout</button></div>`;
+                loadUserChats();
             } else {
-                const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
-                applyTheme(prefersDark ? 'dark' : 'light');
-            }
-        })();
-        // ───────────────────────────────────────────────────────────────
-        // Mobile drawer controls
-        const settingsBtn = document.getElementById('settingsBtn');
-        const settingsDrawer = document.getElementById('settingsDrawer');
-        const epInputMobile = document.getElementById('endpointInputMobile');
-        const makerSelectMobile = document.getElementById('makerSelectMobile');
-        const checkerSelectMobile = document.getElementById('checkerSelectMobile');
-        const modeToggleMobile = document.getElementById('modeToggleMobile');
-        const labelOnPremMobile = document.getElementById('labelOnPremMobile');
-        const labelOnlineMobile = document.getElementById('labelOnlineMobile');
-
-        // ── Settings drawer toggle ──────────────────────────────────────
-        settingsBtn.addEventListener('click', (e) => {
-            e.stopPropagation();
-            const open = settingsDrawer.classList.toggle('open');
-            settingsBtn.classList.toggle('open', open);
-        });
-        // Close drawer when tapping outside
-        document.addEventListener('click', (e) => {
-            if (!settingsDrawer.contains(e.target) && e.target !== settingsBtn) {
-                settingsDrawer.classList.remove('open');
-                settingsBtn.classList.remove('open');
+                sidebarFooter.innerHTML = `<button class="login-btn" onclick="signInWithGoogle()">Sign in with Google</button>`;
+                chatHistoryList.innerHTML = `<div style="padding:20px; text-align:center; color:var(--muted); font-size:12px;">Sign in to see history</div>`;
             }
         });
 
-        // ── Endpoint sync (desktop ↔ mobile) ───────────────────────────
-        epInput.addEventListener('input', () => {
-            epInputMobile.value = epInput.value;
-            localStorage.setItem('mc_endpoint', epInput.value.trim());
-        });
-        epInputMobile.addEventListener('input', () => {
-            epInput.value = epInputMobile.value;
-            localStorage.setItem('mc_endpoint', epInputMobile.value.trim());
-        });
+        async function loadUserChats() {
+            if (!currentUser) return;
+            const ep = getEndpoint();
+            if (!ep) return;
+            try {
+                const res = await fetch(ep.replace('maker-checker', 'get-user-chats'), { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ user_id: currentUser.uid }) });
+                const chats = await res.json();
+                chatHistoryList.innerHTML = chats.map(c => `<div class="chat-item ${currentChatId === c.id ? 'active' : ''}" onclick="loadChat('${c.id}')">${escHtml(c.title || 'Untitled')}</div>`).join('');
+            } catch (e) { console.error(e); }
+        }
 
-        // ── Model select sync ───────────────────────────────────────────
-        makerSelect.addEventListener('change', () => { makerSelectMobile.value = makerSelect.value; });
-        checkerSelect.addEventListener('change', () => { checkerSelectMobile.value = checkerSelect.value; });
-        makerSelectMobile.addEventListener('change', () => { makerSelect.value = makerSelectMobile.value; });
-        checkerSelectMobile.addEventListener('change', () => { checkerSelect.value = checkerSelectMobile.value; });
+        async function loadChat(chatId) {
+            if (window.innerWidth <= 900) closeSidebar();
+            currentChatId = chatId;
+            const ep = getEndpoint();
+            if (!ep || !currentUser) return;
+            feed.innerHTML = '';
+            chatHistory = [];
+            document.querySelectorAll('.chat-item').forEach(el => el.classList.remove('active'));
+            setTimeout(() => { const active = [...document.querySelectorAll('.chat-item')].find(el => el.onclick.toString().includes(chatId)); if (active) active.classList.add('active'); }, 100);
 
-        // ── Conversation history ────────────────────────────────────────
-        // Accumulates {role, content} pairs across turns.
-        // Sent to the backend on every request so the Maker has full context.
-        let chatHistory = [];
+            try {
+                const res = await fetch(ep.replace('maker-checker', 'get-chat-history'), { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ user_id: currentUser.uid, chat_id: chatId }) });
+                const messages = await res.json();
+                messages.forEach(msg => {
+                    if (msg.role === 'user') {
+                        appendUserBubble(msg.text);
+                        chatHistory.push({ role: 'user', content: msg.text });
+                    } else if (msg.role === 'assistant') {
+                        const div = document.createElement('div');
+                        div.className = 'turn';
+                        feed.appendChild(div);
+                        if (msg.metadata && msg.metadata.verdict) {
+                            renderResult(div, { maker: msg.text, checker: msg.metadata, makerModelId: 'History', checkerModelId: 'History' });
+                        } else {
+                            div.innerHTML = `<div class="card maker"><div class="card-head"><div class="dot"></div><span class="label">MAKER</span><span class="model">History</span></div><div class="card-body md-body">${renderMd(msg.text)}</div></div>`;
+                        }
+                        chatHistory.push({ role: 'assistant', content: msg.text });
+                    }
+                });
+                updateCtxCounter();
+            } catch (e) { console.error(e); }
+        }
 
         function updateCtxCounter() {
             const turns = Math.floor(chatHistory.length / 2);
@@ -1417,109 +1664,69 @@
         }
 
         function newChat() {
+            if (window.innerWidth <= 900) closeSidebar();
             chatHistory = [];
+            currentChatId = null;
             updateCtxCounter();
-            // Clear the feed and restore the empty state
+            document.querySelectorAll('.chat-item').forEach(el => el.classList.remove('active'));
             feed.innerHTML = '';
             const fresh = document.createElement('div');
             fresh.className = 'empty';
             fresh.id = 'emptyState';
-            fresh.innerHTML = `
-                <div class="empty-title">// ask anything</div>
-                <div style="font-size:13px;color:var(--muted);margin-top:-4px">OLMo-2 drafts · Qwen3 critiques</div>
-                <div class="empty-grid">
-                    <div class="empty-chip" onclick="usePrompt(this)">What caused the fall of the Roman Empire?</div>
-                    <div class="empty-chip" onclick="usePrompt(this)">Explain backpropagation in two sentences</div>
-                    <div class="empty-chip" onclick="usePrompt(this)">What is the capital of Australia and why isn't it Sydney?</div>
-                    <div class="empty-chip" onclick="usePrompt(this)">Is Pluto a planet? Give the current scientific consensus</div>
-                </div>`;
+            fresh.innerHTML = `<div class="empty-title">// ask anything</div><div style="font-size:13px;color:var(--muted);margin-top:-4px">OLMo-2 drafts · Qwen3 critiques</div><div class="empty-grid"><div class="empty-chip" onclick="usePrompt(this)">What caused the fall of the Roman Empire?</div><div class="empty-chip" onclick="usePrompt(this)">Explain backpropagation in two sentences</div><div class="empty-chip" onclick="usePrompt(this)">What is the capital of Australia and why isn't it Sydney?</div><div class="empty-chip" onclick="usePrompt(this)">Is Pluto a planet? Give the current scientific consensus</div></div>`;
             feed.appendChild(fresh);
             emptyState = fresh;
         }
-        // ───────────────────────────────────────────────────────────────
 
-        // Configs for mode toggle
+        // Theme management
+        function applyTheme(theme) { document.documentElement.setAttribute('data-theme', theme); localStorage.setItem('mc_theme', theme); }
+        function toggleTheme() { const current = document.documentElement.getAttribute('data-theme') || 'dark'; applyTheme(current === 'dark' ? 'light' : 'dark'); }
+        (function initTheme() { const saved = localStorage.getItem('mc_theme'); if (saved) applyTheme(saved); else applyTheme(window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light'); })();
+
+        // Settings drawer
+        const settingsBtn = document.getElementById('settingsBtn');
+        const settingsDrawer = document.getElementById('settingsDrawer');
+        settingsBtn.addEventListener('click', (e) => { e.stopPropagation(); const open = settingsDrawer.classList.toggle('open'); settingsBtn.classList.toggle('open', open); });
+        document.addEventListener('click', (e) => { if (!settingsDrawer.contains(e.target) && e.target !== settingsBtn) { settingsDrawer.classList.remove('open'); settingsBtn.classList.remove('open'); } });
+
+        // Sync inputs
+        const epInputMobile = document.getElementById('endpointInputMobile');
+        epInput.addEventListener('input', () => { epInputMobile.value = epInput.value; localStorage.setItem('mc_endpoint', epInput.value.trim()); });
+        epInputMobile.addEventListener('input', () => { epInput.value = epInputMobile.value; localStorage.setItem('mc_endpoint', epInputMobile.value.trim()); });
+
+        // Models
+        const makerSelectMobile = document.getElementById('makerSelectMobile');
+        const checkerSelectMobile = document.getElementById('checkerSelectMobile');
+        makerSelect.addEventListener('change', () => { makerSelectMobile.value = makerSelect.value; });
+        checkerSelect.addEventListener('change', () => { checkerSelectMobile.value = checkerSelect.value; });
+        makerSelectMobile.addEventListener('change', () => { makerSelect.value = makerSelectMobile.value; });
+        checkerSelectMobile.addEventListener('change', () => { checkerSelect.value = checkerSelectMobile.value; });
+
         let isOnlineMode = false;
+        const onPremMakers = [{ val: "allenai/OLMo-2-1124-7B-Instruct", text: "OLMo-2 7B" }, { val: "meta-llama/Llama-3.2-3B-Instruct", text: "Llama 3.2 3B" }, { val: "Qwen/Qwen2.5-7B-Instruct", text: "Qwen 2.5 7B" }];
+        const onPremCheckers = [{ val: "Qwen/Qwen3-4B", text: "Qwen 3 4B" }, { val: "HuggingFaceTB/SmolLM2-1.7B-Instruct", text: "SmolLM2 1.7B" }, { val: "meta-llama/Llama-3.2-1B-Instruct", text: "Llama 3.2 1B" }];
+        const onlineMakers = [{ val: "online/gemini-3.1-flash-lite-preview", text: "Gemini 3.1 Flash-Lite" }, { val: "online/gemini-3.1-flash-image-preview", text: "Gemini 3.1 Flash" }, { val: "online/gemini-3-pro-image-preview", text: "Gemini 3.0 Pro" }, { val: "online/kimi-k2.5", text: "Moonshot Kimi" }];
+        const onlineCheckers = [{ val: "online/gemini-3.1-flash-lite-preview", text: "Gemini 3.1 Flash-Lite" }, { val: "online/gemini-3.1-flash-image-preview", text: "Gemini 3.1 Flash" }, { val: "online/gemini-3-pro-image-preview", text: "Gemini 3.0 Pro" }, { val: "online/kimi-k2.5", text: "Moonshot Kimi" }];
 
-        const onPremMakers = [
-            { val: "allenai/OLMo-2-1124-7B-Instruct", text: "OLMo-2 7B" },
-            { val: "meta-llama/Llama-3.2-3B-Instruct", text: "Llama 3.2 3B" },
-            { val: "Qwen/Qwen2.5-7B-Instruct", text: "Qwen 2.5 7B" }
-        ];
-
-        const onPremCheckers = [
-            { val: "Qwen/Qwen3-4B", text: "Qwen 3 4B" },
-            { val: "HuggingFaceTB/SmolLM2-1.7B-Instruct", text: "SmolLM2 1.7B" },
-            { val: "meta-llama/Llama-3.2-1B-Instruct", text: "Llama 3.2 1B" }
-        ];
-
-        const onlineMakers = [
-            { val: "online/gemini-3.1-flash-lite-preview", text: "Gemini 3.1 Flash-Lite" },
-            { val: "online/gemini-3.1-flash-image-preview", text: "Gemini 3.1 Flash" },
-            { val: "online/gemini-3-pro-image-preview", text: "Gemini 3.0 Pro" },
-            { val: "online/kimi-k2.5", text: "Moonshot Kimi" }
-        ];
-
-        const onlineCheckers = [
-            { val: "online/gemini-3.1-flash-lite-preview", text: "Gemini 3.1 Flash-Lite" },
-            { val: "online/gemini-3.1-flash-image-preview", text: "Gemini 3.1 Flash" },
-            { val: "online/gemini-3-pro-image-preview", text: "Gemini 3.0 Pro" },
-            { val: "online/kimi-k2.5", text: "Moonshot Kimi" }
-        ];
-
-        function populateSelect(selectElem, options) {
-            selectElem.innerHTML = '';
-            options.forEach(opt => {
-                const el = document.createElement('option');
-                el.value = opt.val;
-                el.textContent = opt.text;
-                selectElem.appendChild(el);
-            });
-        }
-
-        function updateModelOptions() {
-            const makers = isOnlineMode ? onlineMakers : onPremMakers;
-            const checkers = isOnlineMode ? onlineCheckers : onPremCheckers;
-            populateSelect(makerSelect, makers);
-            populateSelect(checkerSelect, checkers);
-            populateSelect(makerSelectMobile, makers);
-            populateSelect(checkerSelectMobile, checkers);
-        }
-
-        function toggleMode() {
-            setMode(isOnlineMode ? 'onprem' : 'online');
-        }
-
-        function setMode(mode) {
-            isOnlineMode = mode === 'online';
-            // Desktop toggle
-            modeToggle.classList.toggle('online', isOnlineMode);
-            labelOnline.classList.toggle('active', isOnlineMode);
-            labelOnPrem.classList.toggle('active', !isOnlineMode);
-            // Mobile toggle (keep in sync)
-            modeToggleMobile.classList.toggle('online', isOnlineMode);
-            labelOnlineMobile.classList.toggle('active', isOnlineMode);
-            labelOnPremMobile.classList.toggle('active', !isOnlineMode);
-            updateModelOptions();
-        }
-
-        // Initialize default UI state
+        function populateSelect(selectElem, options) { selectElem.innerHTML = ''; options.forEach(opt => { const el = document.createElement('option'); el.value = opt.val; el.textContent = opt.text; selectElem.appendChild(el); }); }
+        function updateModelOptions() { const makers = isOnlineMode ? onlineMakers : onPremMakers; const checkers = isOnlineMode ? onlineCheckers : onPremCheckers; populateSelect(makerSelect, makers); populateSelect(checkerSelect, checkers); populateSelect(makerSelectMobile, makers); populateSelect(checkerSelectMobile, checkers); }
+        function toggleMode() { setMode(isOnlineMode ? 'onprem' : 'online'); }
+        function setMode(mode) { isOnlineMode = mode === 'online'; document.getElementById('modeToggle').classList.toggle('online', isOnlineMode); document.getElementById('labelOnline').classList.toggle('active', isOnlineMode); document.getElementById('labelOnPrem').classList.toggle('active', !isOnlineMode); document.getElementById('modeToggleMobile').classList.toggle('online', isOnlineMode); document.getElementById('labelOnlineMobile').classList.toggle('active', isOnlineMode); document.getElementById('labelOnPremMobile').classList.toggle('active', !isOnlineMode); updateModelOptions(); }
         updateModelOptions();
 
-        // Hardcode your permanent modal deploy URL here
-        const MY_PERMANENT_URL = "https://adwaithshenoi--maker-checker.modal.run";
-        epInput.value = MY_PERMANENT_URL;
-        epInput.disabled = true;
-        // Keep mobile input in sync
-        epInputMobile.value = MY_PERMANENT_URL;
-        epInputMobile.disabled = true;
+        // Use config.js for the default endpoint if available
+        const DEFAULT_ENDPOINT = (window.CONFIG && window.CONFIG.endpoint) || "";
+        epInput.value = DEFAULT_ENDPOINT;
+        epInputMobile.value = DEFAULT_ENDPOINT;
 
-        function usePrompt(el) {
-            input.value = el.textContent;
-            autoResize(input);
-            input.focus();
+        // Populate from localStorage if available
+        const savedEp = localStorage.getItem('mc_endpoint');
+        if (savedEp) {
+            epInput.value = savedEp;
+            epInputMobile.value = savedEp;
         }
 
+        function usePrompt(el) { input.value = el.textContent; autoResize(input); input.focus(); }
         function autoResize(el) {
             el.style.height = 'auto';
             el.style.height = Math.min(el.scrollHeight, 120) + 'px';
@@ -1640,47 +1847,6 @@
             feed.scrollTop = feed.scrollHeight;
         }
 
-        function renderMetrics(turn, data) {
-            const mLoad = data.maker_load_time > 0 ? `Cold start (${data.maker_load_time.toFixed(2)}s)` : 'Server is warm';
-            const mInf = data.maker_inference_time.toFixed(2) + 's';
-            const cLoad = data.checker_load_time > 0 ? `Cold start (${data.checker_load_time.toFixed(2)}s)` : 'Server is warm';
-            const cInf = data.checker_inference_time.toFixed(2) + 's';
-            const total = ((Date.now() - timerStart) / 1000).toFixed(2) + 's';
-            const idle = data.closing_time ? `Closing in ${data.closing_time}s` : 'N/A';
-            
-            const stats = document.createElement('div');
-            stats.className = 'stats-container';
-            stats.innerHTML = `
-                <div class="stat-item">
-                    <span class="stat-label">Maker Load</span>
-                    <span class="stat-value">${mLoad}</span>
-                </div>
-                <div class="stat-item">
-                    <span class="stat-label">Maker Infer</span>
-                    <span class="stat-value">${mInf}</span>
-                </div>
-                <div class="stat-item">
-                    <span class="stat-label">Checker Load</span>
-                    <span class="stat-value">${cLoad}</span>
-                </div>
-                <div class="stat-item">
-                    <span class="stat-label">Checker Infer</span>
-                    <span class="stat-value">${cInf}</span>
-                </div>
-                <div class="stat-item">
-                    <span class="stat-label">Total Time</span>
-                    <span class="stat-value">${total}</span>
-                </div>
-                <div class="stat-item">
-                    <span class="stat-label">Idle Timeout</span>
-                    <span class="stat-value">${idle}</span>
-                </div>
-            `;
-            stats.style.animation = 'fadeUp .3s ease both';
-            turn.appendChild(stats);
-            feed.scrollTop = feed.scrollHeight;
-        }
-
         function renderMaker(turn, makerText, makerModelId, checkerModelId) {
             const getModelName = (selectElem, id) => {
                 const opt = Array.from(selectElem.options).find(o => o.value === id);
@@ -1718,14 +1884,10 @@
             if (!prompt) return;
             const endpoint = getEndpoint();
             if (!endpoint) { alert('Paste your Modal endpoint URL in the header first.'); return; }
-
             const makerModel = makerSelect.value;
             const checkerModel = checkerSelect.value;
-
-            // ── Push the new user turn into history BEFORE sending ──────
             chatHistory.push({ role: 'user', content: prompt });
             updateCtxCounter();
-
             if (emptyState && emptyState.parentNode) emptyState.remove();
             input.value = '';
             autoResize(input);
@@ -1736,7 +1898,7 @@
 
             let makerDraft = '';
             let closingTime = 240;
-            
+
             startTimer();
 
             try {
@@ -1747,7 +1909,9 @@
                     body: JSON.stringify({
                         messages: chatHistory,
                         maker: makerModel,
-                        checker: checkerModel
+                        checker: checkerModel,
+                        user_id: currentUser ? currentUser.uid : null,
+                        chat_id: currentChatId || (currentChatId = 'chat_' + Date.now())
                     }),
                 });
                 if (!res.ok) throw new Error(`HTTP ${res.status}`);
@@ -1799,6 +1963,7 @@
                     chatHistory.push({ role: 'assistant', content: makerDraft });
                     updateCtxCounter();
                 }
+                if (currentUser && chatHistory.length <= 2) { loadUserChats(); }
             } catch (err) {
                 // On error, pop the user message we optimistically pushed
                 chatHistory.pop();
