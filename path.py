@@ -22,14 +22,21 @@ import os
 import time
 import threading
 from dotenv import load_dotenv
+import yaml
+from pathlib import Path
 
 load_dotenv()
+
+# Load configuration
+config_path = Path(__file__).parent / "config.yaml"
+with open(config_path, "r") as f:
+    config = yaml.safe_load(f)
 
 # ─────────────────────────────────────────────
 # Infrastructure
 # ─────────────────────────────────────────────
 
-app = modal.App("maker-checker-demo")
+app = modal.App(config["modal"]["app_name"])
 
 # Online API Endpoints
 KIMI_ENDPOINT = "https://integrate.api.nvidia.com/v1/chat/completions"
@@ -51,16 +58,17 @@ image = (
         "requests",
         "firebase-admin",
         "python-dotenv",
+        "PyYAML",
     )
     .env({"HF_HUB_ENABLE_HF_TRANSFER": "1"})
-    .add_local_file("c:\\Users\\adwai\\projects\\make-check-ai\\firebase_config.py", remote_path="/root/firebase_config.py")
-    .add_local_file("c:\\Users\\adwai\\projects\\make-check-ai\\chat_service.py", remote_path="/root/chat_service.py")
-    .add_local_file("c:\\Users\\adwai\\projects\\make-check-ai\\serviceAccountKey.json", remote_path="/root/serviceAccountKey.json")
+    .add_local_file(str(Path(__file__).parent / "firebase_config.py"), remote_path="/root/firebase_config.py")
+    .add_local_file(str(Path(__file__).parent / "chat_service.py"), remote_path="/root/chat_service.py")
+    .add_local_file(str(Path(__file__).parent / "serviceAccountKey.json"), remote_path="/root/serviceAccountKey.json")
 )
 
 VOLUME_PATH      = "/root/.cache/huggingface"
-MAKER_MODEL_ID   = "allenai/OLMo-2-1124-7B-Instruct"
-CHECKER_MODEL_ID = "Qwen/Qwen3-4B"
+MAKER_MODEL_ID   = config["models"]["maker"]
+CHECKER_MODEL_ID = config["models"]["checker"]
 
 CHECKER_SYSTEM = """You are a rigorous fact-checker and quality reviewer.
 
@@ -369,7 +377,7 @@ def fastapi_wrapper():
     secrets=[modal.Secret.from_dotenv()], 
     timeout=1200
 )
-@modal.fastapi_endpoint(method="POST", label="maker-checker")
+@modal.fastapi_endpoint(method="POST", label=config["modal"]["endpoint_label"])
 async def web_check(body: dict):
     """
     POST /maker-checker
@@ -466,7 +474,7 @@ async def web_check(body: dict):
     image=image, 
     secrets=[modal.Secret.from_dotenv()]
 )
-@modal.fastapi_endpoint(method="POST", label="get-user-chats")
+@modal.fastapi_endpoint(method="POST", label=config["modal"]["get_chats_label"])
 async def get_chats(body: dict):
     from chat_service import get_user_chats
     user_id = body.get("user_id")
@@ -478,7 +486,7 @@ async def get_chats(body: dict):
     image=image, 
     secrets=[modal.Secret.from_dotenv()]
 )
-@modal.fastapi_endpoint(method="POST", label="get-chat-history")
+@modal.fastapi_endpoint(method="POST", label=config["modal"]["get_history_label"])
 async def get_history(body: dict):
     from chat_service import get_chat_history
     user_id = body.get("user_id")
